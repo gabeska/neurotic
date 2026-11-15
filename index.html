@@ -156,6 +156,20 @@ kbd{font:11px ui-monospace,monospace;border:1px solid var(--border);border-radiu
 .progress{height:8px;background:var(--surface-2);border-radius:4px;overflow:hidden;margin:6px 0}
 .progress i{display:block;height:100%;background:var(--accent);border-radius:4px}
 .explain ul{padding-left:18px;margin:6px 0}.explain li{margin:0 0 6px}
+.tokrow{display:flex;flex-wrap:wrap;gap:3px;align-items:flex-start;min-height:44px}
+.tchip{display:inline-flex;flex-direction:column;align-items:center;padding:2px 5px;border-radius:5px;font:14px/1.3 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;white-space:pre;color:var(--text)}
+.tchip small{font:10px system-ui;color:var(--text-2);font-variant-numeric:tabular-nums}
+.tchip .sp{color:var(--muted)}
+.tchip.byte{outline:1.5px dashed var(--muted);outline-offset:-1.5px}
+textarea.txt{resize:vertical;min-height:64px;font:15px/1.4 system-ui,sans-serif}
+.merges{max-height:300px;overflow-y:auto;font:12.5px/1.75 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:var(--text-2);border:1px solid var(--border);border-radius:8px;padding:4px 8px;position:relative}
+.merges div.future{color:var(--muted);opacity:.45}
+.merges div.cur{background:color-mix(in srgb, var(--s2) 22%, var(--surface));color:var(--text);border-radius:4px}
+.merges b{color:var(--text);font-weight:600}
+#atCanvas{display:block;width:100%;min-width:560px;height:300px}
+table.heat td.c{text-align:center;min-width:40px}
+table.heat th{text-align:center}
+.qbtns{display:flex;gap:6px;flex-wrap:wrap}
 @media (max-width:1000px){ .layout{grid-template-columns:minmax(0,1fr);padding:6px 16px 24px} .top{padding:16px 16px 8px} }
 @media (max-width:760px){ .row,.row.wide-left{grid-template-columns:minmax(0,1fr)} #net{height:320px} #bpNet{height:380px} }
 </style>
@@ -175,6 +189,8 @@ kbd{font:11px ui-monospace,monospace;border:1px solid var(--border);border-radiu
     <button data-tab="evo" role="tab">6 · Perceptron → LLM</button>
     <button data-tab="lm" role="tab">7 · How an LLM writes</button>
     <button data-tab="chat" role="tab">8 · Prompt → reply</button>
+    <button data-tab="tok" role="tab">9 · Tokens</button>
+    <button data-tab="att" role="tab">10 · Attention, learned</button>
   </nav>
 </header>
 
@@ -320,6 +336,35 @@ kbd{font:11px ui-monospace,monospace;border:1px solid var(--border);border-radiu
       <p class="cap"><kbd>Space</kbd> adds the next token (when you're not typing).</p>
     </section>
 
+    <section class="card" data-only="tok">
+      <h3 style="margin-top:0">The tokenizer</h3>
+      <label class="ctl">Merges learned <output id="tokKOut"></output>
+        <input type="range" id="tokK" min="0" max="600" step="1">
+      </label>
+      <div class="btnrow">
+        <button class="btn primary" id="tokPlay">▶ Watch it learn</button>
+        <button class="btn" id="tokZero">0</button>
+        <button class="btn" id="tokAll">All 600</button>
+      </div>
+      <div class="stats" id="tokStats"></div>
+      <h3>Try a text</h3>
+      <div class="btnrow" id="tokExamples"></div>
+      <p class="cap" id="tokCorpusNote"></p>
+      <p class="cap"><kbd>Space</kbd> plays or pauses (when you're not typing).</p>
+    </section>
+
+    <section class="card" data-only="att">
+      <div class="btnrow">
+        <button class="btn primary" id="atPlay">▶ Train</button>
+        <button class="btn" id="atReset">Reset</button>
+      </div>
+      <div class="stats" id="atStats"></div>
+      <h3>Ask about this sentence</h3>
+      <div class="qbtns" id="atQs"></div>
+      <div class="btnrow" style="margin-top:8px"><button class="btn" id="atNew">New sentence</button></div>
+      <p class="cap"><kbd>Space</kbd> starts or pauses training.</p>
+    </section>
+
     <section class="card" data-only="2d img">
       <div class="btnrow">
         <button class="btn primary" id="play">▶ Train</button>
@@ -447,6 +492,21 @@ kbd{font:11px ui-monospace,monospace;border:1px solid var(--border);border-radiu
         <li><b>Turn off "Stop at the ⟨end⟩ token".</b> After its reply it often writes "user :" and makes up your next question. Real chat apps stop at the end token for exactly this reason.</li>
         <li><b>Ask something it never learned</b>, like "what does the cat drink ?". It doesn't know "drink", but it still answers fluently and confidently. Real LLMs can do the same when they lack knowledge (hallucination).</li>
         <li><b>Sample 5 replies</b> at temperature 1. One prompt can produce several different replies.</li>
+      </ol>
+      <ol data-only="tok" style="margin-top:10px">
+        <li><b>Drag the slider to 0.</b> Every character is its own token, so "strawberry" is 10 tokens. Now press <i>Watch it learn</i> and watch the pieces join up, one merge at a time.</li>
+        <li><b>Words this site uses a lot</b> become single tokens, such as " network", " weights" and " gradient". The tokenizer was trained on the text of this website. Rarer words, even " neural", stay in pieces.</li>
+        <li><b>Count the r's.</b> Look at how "strawberry" is split, then read the card about it. The model gets a few ids, not ten letters.</li>
+        <li><b>Try the French sentence and the emoji.</b> é and 🐱 don't exist as letters here. They are made of 2 and 4 bytes, so they cost several tokens each.</li>
+        <li><b>Try the numbers.</b> This site has almost no numbers, so every digit stays a token of its own. Many real tokenizers cut long numbers into chunks of up to three digits, counted from the left, so 12345 becomes 123 and 45. Those chunks don't line up with thousands, which is one reason arithmetic is hard for LLMs.</li>
+      </ol>
+      <ol data-only="att" style="margin-top:10px">
+        <li><b>Before training,</b> click each question. The attention is spread almost evenly over the words, and the answers are guesses.</li>
+        <li><b>Press Train.</b> After a few thousand examples (a few seconds), each question snaps its attention onto the right word.</li>
+        <li><b>Switch questions on the same sentence.</b> The words don't change, but the question's <i>query</i> does, so the attention lands somewhere else.</li>
+        <li><b>New sentence:</b> the answer word moves around, and the attention follows it.</li>
+        <li><b>Read the numbers</b> in "Under the hood". Each score is a dot product between the question's query and a word's key. Softmax turns the scores into weights that add up to 100%.</li>
+        <li><b>If accuracy stalls below 100%,</b> this random start got stuck in a local minimum, just like XOR in lab 1. Press Reset and train again.</li>
       </ol>
     </section>
   </aside>
@@ -686,6 +746,68 @@ kbd{font:11px ui-monospace,monospace;border:1px solid var(--border);border-radiu
             <li><b>It stops when it writes the end token.</b> The app cuts the text there and shows you only the part after the assistant marker.</li>
           </ul>
           <p class="cap">One of this toy's training texts: <span id="chSample" class="mono"></span></p>
+        </div>
+      </section>
+    </div>
+
+    <section class="card" data-only="tok">
+      <div class="cardhead"><h2>Your text, split into tokens</h2><span class="cap">small number = token id · ␣ = space · dashed = a single byte</span></div>
+      <textarea id="tokInput" class="txt" spellcheck="false" aria-label="Text to tokenize"></textarea>
+      <div id="tokOut" class="tokrow" style="margin-top:10px"></div>
+      <h3>What the model actually receives</h3>
+      <div id="tokIds" class="mono"></div>
+      <p class="cap">The model never sees letters. Each id is looked up in an embedding table (labs 7 and 8), and from then on the token is just a list of numbers.</p>
+    </section>
+    <div class="row" data-only="tok">
+      <section class="card">
+        <div class="cardhead"><h2>The merges, in the order they were learned</h2></div>
+        <div id="tokMerges" class="merges"></div>
+        <p class="cap">Each line: two existing tokens that sat next to each other most often in the training text, joined into one new token. The count is how often that pair appeared at that moment.</p>
+      </section>
+      <section class="card">
+        <div class="cardhead"><h2>Why "strawberry" is hard to spell</h2></div>
+        <div id="tokStraw" class="explain"></div>
+      </section>
+    </div>
+    <section class="card" data-only="tok">
+      <div class="cardhead"><h2>How byte-pair encoding (BPE) works</h2></div>
+      <div class="never explain">
+        <p><b>1 · Start with bytes.</b> Every piece of text is stored as bytes, numbers from 0 to 255. Letters, digits and punctuation take one byte each. Characters like é or 🐱 take 2 to 4. So the tokenizer starts with 256 tokens, one per byte, and can encode any text at all.</p>
+        <p><b>2 · Merge the most common pair.</b> Count every pair of neighbouring tokens in the training text, join the most frequent pair into a new token, and repeat. Common words end up as one token. Rare words stay in pieces.</p>
+        <p><b>3 · Real tokenizers</b> work the same way but learn far more merges from far more text. GPT-2's had a vocabulary of 50,257 tokens, and newer ones have 100,000 to 200,000 or more. For English, a rough rule of thumb is about 4 characters per token.</p>
+        <p><b>Why it matters.</b> Context windows, speed and prices are all counted in tokens. Text in languages that were rare in the tokenizer's training data splits into more tokens, so it costs more and fills the context window faster. Spelling, counting letters and arithmetic are harder, because the model sees chunks, not characters or digits.</p>
+      </div>
+    </section>
+
+    <section class="card" data-only="att">
+      <div class="cardhead"><h2>Where does the question look?</h2><span class="cap">arc thickness = attention weight</span></div>
+      <div class="tablewrap"><canvas id="atCanvas" aria-label="The sentence with arcs from the question token to each word, thicker for more attention"></canvas></div>
+      <p id="atAnswer" style="font-size:15px;margin:6px 0 0"></p>
+    </section>
+    <div class="row" data-only="att">
+      <section class="card">
+        <div class="cardhead"><h2>All three questions at once</h2></div>
+        <div class="tablewrap"><table class="grad heat" id="atHeat"></table></div>
+        <p class="cap">Each row is one question, and each cell is how much of its attention goes to that word. Same sentence, different question, so the attention moves.</p>
+      </section>
+      <section class="card">
+        <div class="cardhead"><h2>Accuracy while training</h2></div>
+        <canvas id="atChart" class="chart"></canvas>
+        <p class="cap">Share of correct answers on the latest 200 training examples. Every example is a fresh random sentence, so the model can't just memorize a list.</p>
+      </section>
+    </div>
+    <div class="row" data-only="att">
+      <section class="card">
+        <div class="cardhead"><h2 id="atQkvTitle">Under the hood: query, key, value</h2></div>
+        <div id="atQkv"></div>
+      </section>
+      <section class="card">
+        <div class="cardhead"><h2>What it learned, and what a real Transformer adds</h2></div>
+        <div class="explain">
+          <p><b>The task.</b> Read a sentence, then answer one question: which animal, which colour, or which food? The model is one attention head plus an output layer, with <span id="atParams"></span> weights, all starting random.</p>
+          <p><b>Nobody told it which words are colours.</b> It only ever saw sentences and correct answers. To get the answers right, it had to learn query and key vectors that make "color?" match colour words, "food?" match food words, and so on. That is the sharp attention you see after training.</p>
+          <p><b>Distance doesn't matter.</b> The answer can be the first word or the tenth. Attention compares the question with every word directly. The fixed 10-token window in lab 8 can't do that.</p>
+          <p><b>A real Transformer</b> does this for <i>every</i> word, not just the question. Each layer has many heads, each looking for a different kind of relationship, and dozens of layers are stacked. Word positions are added to the embeddings too, because attention on its own ignores word order. This toy has none of that, so "the dog chased the cat" and "the cat chased the dog" look identical to it.</p>
         </div>
       </section>
     </div>
@@ -1232,6 +1354,7 @@ const CHARTS = {
   pcChart:   () => ({ H: pc.hist, keys: [{ k:'mistakes', n:'Mistakes', c:'s1' }], isAcc: false, int: true, x: 'pass' }),
   bpChart:   () => ({ H: bp.hist, keys: [{ k:'loss', n:'Loss', c:'s1' }], isAcc: false, x: 'update' }),
   lmChart:   () => ({ H: lm.hist, keys: [{ k:'loss', n:'Loss', c:'s1' }], isAcc: false, x: 'epoch' }),
+  atChart:   () => ({ H: at.hist, keys: [{ k:'acc', n:'Acc.', c:'s1' }], isAcc: true, x: 'round' }),
 };
 function renderChart(id){
   const { H, keys, isAcc, int, x: xName } = CHARTS[id]();
@@ -1356,6 +1479,8 @@ function render(){
   if (tab === 'evo') return renderEvo();
   if (tab === 'lm') return renderLM();
   if (tab === 'chat') return renderChat();
+  if (tab === 'tok') return renderTok();
+  if (tab === 'att') return renderAtt();
   const lab = cur();
   if (lab.kind === '2d') render2d(lab);
   else { renderPad(lab); renderTiles(lab); updateGallery(lab); }
@@ -2721,6 +2846,240 @@ function chSync(){
   $('#chTemp').value = ch.temp; $('#chTempOut').textContent = ch.temp.toFixed(2);
 }
 
+// ---------------------------------------------------------------- lab: tokens (byte-pair encoding)
+// Byte-level BPE, trained on this page's own text. A token is a string of bytes, stored as a Latin-1 JS string (one char per byte).
+const TOK_MAX = 600;
+const TOK_RE = / ?\p{L}+| ?\p{N}+| ?[^\s\p{L}\p{N}]+|\s+/gu;
+const TOK_EXAMPLES = ['How many r\'s are in strawberry?', 'A neural network learns its weights by gradient descent.', 'Supercalifragilisticexpialidocious', '12345 × 678 = 8369910', 'Le chat dort sur le canapé.', '🐱 + 🐶 = ❤️'];
+const tk = { k: 200, play: false, acc: 0, built: false };
+const enc8 = new TextEncoder(), dec8 = new TextDecoder('utf-8', { fatal: true });
+const toBytes = s => String.fromCharCode(...enc8.encode(s));
+function tokCorpus(){
+  const parts = [...document.querySelectorAll('.tips li, .explain p, .explain li, .cap, h2')].map(e => e.textContent);
+  for (const st of EVO) parts.push(st.cap, st.html.replace(/<[^>]+>/g, ''));
+  return parts.join('\n').replace(/[ \t]+/g, ' ');
+}
+function tokTrain(){
+  const text = tokCorpus(), counts = new Map();
+  tk.nWords = text.split(/\s+/).filter(Boolean).length;
+  for (const m of text.match(TOK_RE) || []){ const b = toBytes(m); counts.set(b, (counts.get(b) || 0) + 1); }
+  const words = [...counts].map(([b, n]) => ({ sym: [...b], n }));
+  tk.merges = []; tk.rank = new Map();
+  for (let r = 0; r < TOK_MAX; r++){
+    const pc = new Map();
+    for (const w of words){ const s = w.sym; for (let i = 0; i < s.length - 1; i++){ const key = s[i] + '\0' + s[i+1]; pc.set(key, (pc.get(key) || 0) + w.n); } }
+    let best = null, bn = 1;
+    for (const [key, n] of pc) if (n > bn){ bn = n; best = key; }
+    if (!best) break;
+    const [a, b] = best.split('\0');
+    tk.merges.push({ a, b, n: bn }); tk.rank.set(best, r);
+    for (const w of words){
+      const s = w.sym; if (s.length < 2) continue;
+      const out = []; for (let i = 0; i < s.length; i++){ if (i < s.length - 1 && s[i] === a && s[i+1] === b){ out.push(a + b); i++; } else out.push(s[i]); }
+      w.sym = out;
+    }
+  }
+  tk.id = new Map(); for (let i = 0; i < 256; i++) tk.id.set(String.fromCharCode(i), i);
+  tk.merges.forEach((m, i) => { if (!tk.id.has(m.a + m.b) || tk.id.get(m.a + m.b) < 256) tk.id.set(m.a + m.b, 256 + i); });
+  tk.built = true; tk.mergesBuilt = false;
+  $('#tokK').max = tk.merges.length; tk.k = Math.min(tk.k, tk.merges.length);
+}
+function tokEncode(text, k){
+  const out = [];
+  for (const m of text.match(TOK_RE) || []){
+    let s = [...toBytes(m)];
+    while (s.length > 1){
+      let best = -1, br = k;
+      for (let i = 0; i < s.length - 1; i++){ const r = tk.rank.get(s[i] + '\0' + s[i+1]); if (r !== undefined && r < br){ br = r; best = i; } }
+      if (best < 0) break;
+      const a = s[best], b = s[best+1], o = [];
+      for (let i = 0; i < s.length; i++){ if (i < s.length - 1 && s[i] === a && s[i+1] === b){ o.push(a + b); i++; } else o.push(s[i]); }
+      s = o;
+    }
+    out.push(...s);
+  }
+  return out;
+}
+function tokShow(t){ // bytes → readable HTML; bytes that aren't a whole character are shown as hex
+  let str; try { str = dec8.decode(Uint8Array.from(t, c => c.charCodeAt(0))); } catch { return { html: [...t].map(c => c.charCodeAt(0).toString(16).toUpperCase().padStart(2, '0')).map(h => '‹' + h + '›').join(''), byte: true }; }
+  return { html: esc(str).replace(/ /g, '<span class="sp">␣</span>').replace(/\n/g, '<span class="sp">↵</span>').replace(/\t/g, '<span class="sp">⇥</span>'), byte: false };
+}
+const TOK_HUES = ['s1', 's2', 'cat', 'dog', 'pos'];
+function tokChips(toks){
+  return toks.map((t, i) => { const d = tokShow(t);
+    return `<span class="tchip${d.byte ? ' byte' : ''}" style="background:color-mix(in srgb, var(--${TOK_HUES[i % 5]}) 20%, var(--surface))">${d.html}<small>${tk.id.get(t)}</small></span>`; }).join('');
+}
+function renderTok(){
+  if (!tk.built) tokTrain();
+  const k = tk.k, text = $('#tokInput').value, toks = tokEncode(text, k), nChars = [...text].length;
+  $('#tokKOut').textContent = `${k} → ${256 + k} tokens`;
+  $('#tokK').value = k;
+  $('#tokOut').innerHTML = tokChips(toks) || '<span class="cap">Type something above.</span>';
+  $('#tokIds').textContent = '[' + toks.map(t => tk.id.get(t)).join(', ') + ']';
+  $('#tokStats').innerHTML = `<div class="stat"><span>Characters</span><b>${nChars}</b></div><div class="stat"><span>Tokens</span><b>${toks.length}</b></div>` +
+    `<div class="stat"><span>Characters per token</span><b>${toks.length ? (nChars/toks.length).toFixed(2) : '–'}</b></div><div class="stat"><span>Vocabulary</span><b>${(256 + k).toLocaleString('en-US')}</b></div>`;
+  $('#tokCorpusNote').textContent = `This tokenizer was trained on the text of this website: about ${Math.round(tk.nWords/100)*100} words.`;
+  $('#tokPlay').textContent = tk.play ? '❚❚ Pause' : '▶ Watch it learn';
+  // merge list
+  const box = $('#tokMerges');
+  if (!tk.mergesBuilt){
+    box.innerHTML = tk.merges.map((m, i) => `<div>${String(i + 1).padStart(3, ' ').replace(/ /g, '&nbsp;')}. ${tokShow(m.a).html} + ${tokShow(m.b).html} → <b>${tokShow(m.a + m.b).html}</b> <span style="color:var(--muted)">×${m.n}</span></div>`).join('');
+    tk.mergesBuilt = true; tk.shownK = -1;
+  }
+  if (tk.shownK !== k){
+    [...box.children].forEach((d, i) => { d.classList.toggle('future', i >= k); d.classList.toggle('cur', i === k - 1); });
+    const cur = box.children[Math.max(0, k - 1)];
+    if (cur) box.scrollTop = Math.max(0, cur.offsetTop - box.clientHeight/2);
+    tk.shownK = k;
+  }
+  // strawberry
+  const sw = tokEncode(' strawberry', k), n = sw.length;
+  $('#tokStraw').innerHTML = `<div class="tokrow">${tokChips(sw)}</div>` +
+    (n >= 10 ? `<p>With ${k} merges, every letter is its own token, so spelling is easy: the model sees s, t, r, a, w, b, e, r, r, y one at a time. The price is length. The same text takes 4 to 5 times as many tokens, it fills the context window sooner, and attention has to compare far more pairs.</p>`
+      : `<p>In the middle of a sentence, " strawberry" reaches the model as <b>${n} token${n > 1 ? 's' : ''}</b>: the ids [${sw.map(t => tk.id.get(t)).join(', ')}]. Ask "how many r's?" and the model has to know how each of these chunks is spelled. ${(() => { const rt = sw.map(t => ({ t, s: tokShow(t).html.replace(/<[^>]+>/g, '').replace('␣', ''), r: [...t].filter(c => c === 'r').length })).sort((a, b) => b.r - a.r)[0]; return rt.r ? `Nothing in the number ${tk.id.get(rt.t)} says that "${esc(rt.s)}" contains ${rt.r === 1 ? 'an r' : rt.r + ' r\'s'}.` : ''; })()}</p>
+         <p>Real LLMs learn the spelling of many tokens from their training text, but only indirectly. That's why counting letters, reversing words and rhyming used to trip them up so often. Newer models handle it better, often by spelling the word out letter by letter first.</p>`) +
+    `<p class="cap">The leading ␣ is part of the token. "strawberry" at the start of a text and " strawberry" after a space are different tokens.</p>`;
+}
+$('#tokInput').addEventListener('input', () => { dirty = true; });
+$('#tokK').oninput = e => { tk.k = +e.target.value; tk.play = false; dirty = true; };
+$('#tokPlay').onclick = () => { if (!tk.play && tk.k >= tk.merges.length) tk.k = 0; tk.play = !tk.play; tk.acc = 0; dirty = true; };
+$('#tokZero').onclick = () => { tk.play = false; tk.k = 0; dirty = true; };
+$('#tokAll').onclick = () => { tk.play = false; tk.k = tk.merges.length; dirty = true; };
+TOK_EXAMPLES.forEach(t => { const b = document.createElement('button'); b.className = 'btn'; b.textContent = t.length > 22 ? t.slice(0, 20) + '…' : t; b.title = t; b.onclick = () => { $('#tokInput').value = t; dirty = true; }; $('#tokExamples').appendChild(b); });
+$('#tokInput').value = TOK_EXAMPLES[0];
+
+// ---------------------------------------------------------------- lab: attention, learned
+// One attention head: the question token's query is compared with every word's key; softmax gives attention weights;
+// the weighted sum of the words' values goes through an output layer that predicts the answer word.
+const AT_CAT = { animal:['cat', 'dog', 'cow', 'horse', 'bird', 'duck', 'fox', 'mouse'], color:['red', 'blue', 'green', 'yellow', 'black', 'white'], food:['fish', 'bread', 'apples', 'seeds', 'cheese', 'cake'] };
+const AT_TPL = ['the {color} {animal} ate some {food}', 'my {animal} found {food} under the {color} tree', 'yesterday a {animal} with a {color} hat stole the {food}',
+  'near the {color} house a little {animal} hid the {food}', 'the {food} was eaten by a sleepy {animal} on the {color} rug', '{food} is what the old {animal} likes , not the {color} ball'];
+class AttnHead {
+  constructor(V, D = 24, K = 12){
+    this.V = V; this.D = D; this.K = K;
+    const r = (n, s) => Float64Array.from({ length: n }, () => randn()*s);
+    this.E = r(V*D, 0.1); this.Wq = r(K*D, 1/Math.sqrt(D)); this.Wk = r(K*D, 1/Math.sqrt(D)); this.Wv = r(D*D, 1/Math.sqrt(D));
+    this.Wo = r(V*D, 1/Math.sqrt(D)); this.bo = new Float64Array(V);
+  }
+  get nParams(){ return this.E.length + this.Wq.length + this.Wk.length + this.Wv.length + this.Wo.length + this.bo.length; }
+  mv(W, rows, cols, x){ const o = new Float64Array(rows); for (let r = 0; r < rows; r++){ let s = 0; for (let c = 0; c < cols; c++) s += W[r*cols+c]*x[c]; o[r] = s; } return o; }
+  forward(ids){ // the last id is the question; it attends over all the words before it
+    const { D, K, V, E } = this, T = ids.length - 1, e = ids.map(t => E.subarray(t*D, t*D + D));
+    const q = this.mv(this.Wq, K, D, e[T]), k = [], v = [];
+    for (let i = 0; i < T; i++){ k.push(this.mv(this.Wk, K, D, e[i])); v.push(this.mv(this.Wv, D, D, e[i])); }
+    const sc = k.map(kk => { let s = 0; for (let j = 0; j < K; j++) s += q[j]*kk[j]; return s/Math.sqrt(K); });
+    const m = Math.max(...sc); let z = 0; const a = sc.map(s => { const t = Math.exp(s - m); z += t; return t; }).map(t => t/z);
+    const c = new Float64Array(D); for (let i = 0; i < T; i++) for (let d = 0; d < D; d++) c[d] += a[i]*v[i][d];
+    const lg = this.mv(this.Wo, V, D, c); for (let u = 0; u < V; u++) lg[u] += this.bo[u];
+    const mm = Math.max(...lg); let zz = 0; const p = lg.map(l => { const t = Math.exp(l - mm); zz += t; return t; }); for (let u = 0; u < V; u++) p[u] /= zz;
+    return { ids, e, q, k, v, sc, a, c, p };
+  }
+  // Backpropagation through the output layer, the weighted sum, the softmax, the dot products and the embeddings.
+  train(ids, y, lr, clip = 2){
+    const f = this.forward(ids), { D, K, V } = this, T = ids.length - 1, { e, q, k, v, a, c, p } = f, sk = Math.sqrt(K);
+    const g = { E: new Float64Array(this.E.length), Wq: new Float64Array(this.Wq.length), Wk: new Float64Array(this.Wk.length), Wv: new Float64Array(this.Wv.length), Wo: new Float64Array(this.Wo.length), bo: new Float64Array(V) };
+    const dl = Float64Array.from(p); dl[y] -= 1; const dc = new Float64Array(D);
+    for (let u = 0; u < V; u++){ g.bo[u] = dl[u]; for (let d = 0; d < D; d++){ g.Wo[u*D+d] = dl[u]*c[d]; dc[d] += this.Wo[u*D+d]*dl[u]; } }
+    const da = v.map(vv => { let s = 0; for (let d = 0; d < D; d++) s += dc[d]*vv[d]; return s; });
+    let ad = 0; for (let i = 0; i < T; i++) ad += a[i]*da[i];
+    const dq = new Float64Array(K);
+    for (let i = 0; i < T; i++){
+      const t = ids[i], ds = a[i]*(da[i] - ad); // softmax backward
+      for (let j = 0; j < K; j++){ dq[j] += ds*k[i][j]/sk; const dk = ds*q[j]/sk; for (let d = 0; d < D; d++){ g.Wk[j*D+d] += dk*e[i][d]; g.E[t*D+d] += this.Wk[j*D+d]*dk; } }
+      for (let r = 0; r < D; r++){ const dv = a[i]*dc[r]; for (let d = 0; d < D; d++){ g.Wv[r*D+d] += dv*e[i][d]; g.E[t*D+d] += this.Wv[r*D+d]*dv; } }
+    }
+    const tq = ids[T]; for (let j = 0; j < K; j++) for (let d = 0; d < D; d++){ g.Wq[j*D+d] += dq[j]*e[T][d]; g.E[tq*D+d] += this.Wq[j*D+d]*dq[j]; }
+    let nn = 0; for (const key in g) for (const x of g[key]) nn += x*x;
+    const s = lr*Math.min(1, clip/Math.sqrt(nn)); // gradient clipping keeps rare huge steps from blowing up training
+    for (const key in g){ const W = this[key], G = g[key]; for (let i = 0; i < W.length; i++) W[i] -= s*G[i]; }
+    let best = 0; for (let u = 1; u < V; u++) if (p[u] > p[best]) best = u;
+    return { loss: -Math.log(Math.max(p[y], 1e-12)), correct: best === y };
+  }
+}
+const at = { running: false, q: 'animal' };
+function atBuild(){
+  const words = new Set();
+  for (const t of AT_TPL) for (const w of t.split(' ')) if (!w.startsWith('{')) words.add(w);
+  for (const l of Object.values(AT_CAT)) l.forEach(w => words.add(w));
+  for (const q of Object.keys(AT_CAT)) words.add(q + '?');
+  at.vocab = [...words]; at.id = Object.fromEntries(at.vocab.map((w, i) => [w, i]));
+}
+function atRandom(){ const f = {}; for (const c of Object.keys(AT_CAT)) f[c] = pick(AT_CAT[c]); return { f, words: pick(AT_TPL).replace(/\{(\w+)\}/g, (_, c) => f[c]).split(' ') }; }
+const atIds = (words, q) => [...words, q + '?'].map(w => at.id[w]);
+function atReset(){
+  at.net = new AttnHead(at.vocab.length); at.steps = 0; at.recent = []; at.recentLoss = [];
+  let ok = 0, L = 0; for (let i = 0; i < 200; i++){ const r = atRandom(), q = pick(Object.keys(AT_CAT)), f = at.net.forward(atIds(r.words, q)), y = at.id[r.f[q]]; L -= Math.log(f.p[y]); let b = 0; for (let u = 1; u < f.p.length; u++) if (f.p[u] > f.p[b]) b = u; ok += b === y; }
+  at.hist = [{ epoch: 0, acc: ok/200, loss: L/200 }];
+}
+function atTrain(n){
+  for (let i = 0; i < n; i++){
+    const r = atRandom(), q = pick(Object.keys(AT_CAT));
+    const res = at.net.train(atIds(r.words, q), at.id[r.f[q]], at.steps < 7200 ? 0.05 : 0.015);
+    at.steps++; at.recent.push(res.correct); at.recentLoss.push(res.loss);
+    if (at.recent.length > 200){ at.recent.shift(); at.recentLoss.shift(); }
+    if (at.steps % 200 === 0) at.hist.push({ epoch: at.hist.length, acc: at.recent.reduce((a, b) => a + b, 0)/at.recent.length, loss: at.recentLoss.reduce((a, b) => a + b, 0)/at.recentLoss.length });
+  }
+}
+function setAtRunning(v){ at.running = v; $('#atPlay').textContent = v ? '❚❚ Pause' : '▶ Train'; }
+function atAnswer(f){ let b = 0; for (let u = 1; u < f.p.length; u++) if (f.p[u] > f.p[b]) b = u; return { w: at.vocab[b], p: f.p[b] }; }
+function renderAtt(){
+  const words = at.sent.words, f = at.net.forward(atIds(words, at.q)), ans = atAnswer(f), truth = at.sent.f[at.q];
+  const last = at.hist[at.hist.length - 1];
+  $('#atStats').innerHTML = `<div class="stat"><span>Training examples</span><b>${at.steps.toLocaleString('en-US')}</b></div><div class="stat"><span>Accuracy (last 200)</span><b>${(last.acc*100).toFixed(0)}%</b></div>` +
+    (at.steps >= 12000 && last.acc < 0.97 ? '<div class="warnmsg">Stuck below 100%: this random start fell into a local minimum. Press Reset and train again.</div>' : '');
+  [...$('#atQs').children].forEach(b => b.classList.toggle('on', b.dataset.q === at.q));
+  // arcs
+  const { x: g, w, h } = fit($('#atCanvas'));
+  g.clearRect(0, 0, w, h);
+  const toks = [...words, at.q + '?'];
+  let fs = 15; g.font = fs + 'px system-ui';
+  const pad = () => Math.round(fs*0.9), gap = () => Math.round(fs*0.5);
+  const total = () => toks.reduce((s, t) => s + g.measureText(t).width + pad() + gap(), -gap()) + gap()*2;
+  while (total() > w - 8 && fs > 8){ fs--; g.font = fs + 'px system-ui'; }
+  let x = (w - total())/2; const y = h - 34, bh = fs + 12, boxes = [];
+  toks.forEach((t, i) => { if (i === toks.length - 1) x += gap()*2; const bw = g.measureText(t).width + pad(); boxes.push({ x, w: bw, cx: x + bw/2 }); x += bw + gap(); });
+  const qb = boxes[boxes.length - 1], top = y - bh/2 - 4;
+  f.a.forEach((a, j) => {
+    if (a < 0.005) return;
+    const x2 = boxes[j].cx, lift = Math.min(h - bh - 50, 26 + Math.abs(qb.cx - x2)*0.42);
+    g.strokeStyle = T.s1; g.globalAlpha = 0.2 + 0.8*a; g.lineWidth = 1 + 12*a;
+    g.beginPath(); g.moveTo(qb.cx, top); g.quadraticCurveTo((qb.cx + x2)/2, top - lift*2, x2, top); g.stroke(); g.globalAlpha = 1;
+    if (a >= 0.2) evText(g, Math.round(a*100) + '%', (qb.cx + x2)/2, top - lift - 8, { col: T.text, font: '600 11px system-ui' });
+  });
+  toks.forEach((t, i) => {
+    const b = boxes[i], isQ = i === toks.length - 1, a = isQ ? 0 : f.a[i];
+    evBox(g, b.x, y - bh/2, b.w, bh, isQ ? tint('s2', 0.3) : mixc(T.rgb['surface-2'], T.rgb.s1, Math.min(0.7, a)), isQ ? T.s2 : T.border);
+    evText(g, t, b.cx, y + 1, { col: T.text, font: (isQ ? '600 ' : '') + fs + 'px system-ui' });
+    if (!isQ) evText(g, (a*100).toFixed(0) + '%', b.cx, y + bh/2 + 12, { col: T.muted, font: '10.5px system-ui' });
+  });
+  $('#atAnswer').innerHTML = `Answer: <b>${esc(ans.w)}</b> (${(ans.p*100).toFixed(0)}% sure) ${ans.w === truth ? '✓' : `<span style="color:var(--neg)">✗</span> <span class="cap">the right answer is "${esc(truth)}"</span>`}`;
+  // heat table
+  let t = '<thead><tr><th style="text-align:left">question</th>' + words.map(wd => `<th>${esc(wd)}</th>`).join('') + '<th style="text-align:left">answer</th></tr></thead><tbody>';
+  for (const q of Object.keys(AT_CAT)){
+    const fq = at.net.forward(atIds(words, q)), aq = atAnswer(fq), ok = aq.w === at.sent.f[q];
+    t += `<tr class="${q === at.q ? 'hlrow' : ''}"><td>${q}?</td>` + fq.a.map(a => `<td class="c" style="background:color-mix(in srgb, var(--s1) ${Math.round(a*85)}%, transparent)">${Math.round(a*100)}</td>`).join('') +
+      `<td style="text-align:left">${esc(aq.w)} ${ok ? '✓' : '<span style="color:var(--neg)">✗</span>'}</td></tr>`;
+  }
+  $('#atHeat').innerHTML = t + '</tbody>';
+  renderChart('atChart');
+  // query / key / value
+  const K = at.net.K, D = at.net.D, vec = (arr, n = 4) => '[' + Array.from(arr.slice(0, n), v => fmt(v)).join(', ') + ', …]';
+  const order = [...f.a.keys()].sort((i, j) => f.a[j] - f.a[i]);
+  $('#atQkvTitle').textContent = `Under the hood: "${at.q}?" asks the sentence`;
+  $('#atQkv').innerHTML = `<div class="eq">query  q = W<sub>q</sub> · embedding("${at.q}?") = ${vec(f.q)} <span style="color:var(--muted)">(${K} numbers)</span><br>
+    key    k<sub>i</sub> = W<sub>k</sub> · embedding(word i) &nbsp;·&nbsp; value v<sub>i</sub> = W<sub>v</sub> · embedding(word i)<br>
+    score<sub>i</sub> = q · k<sub>i</sub> ÷ √${K} &nbsp;→&nbsp; softmax → attention a<sub>i</sub><br>
+    c = Σ a<sub>i</sub> · v<sub>i</sub> <span style="color:var(--muted)">(${D} numbers)</span> &nbsp;→&nbsp; output layer → softmax over all ${at.vocab.length} words</div>
+    <div class="tablewrap"><table class="grad"><thead><tr><th>word</th><th>key k (first 4 of ${K})</th><th>score q·k ÷ √${K}</th><th>attention</th></tr></thead><tbody>` +
+    order.map(i => `<tr><td>${esc(words[i])}</td><td>${vec(f.k[i])}</td><td>${fmt(f.sc[i])}</td><td>${(f.a[i]*100).toFixed(1)}%</td></tr>`).join('') +
+    `</tbody></table></div><p class="cap">Rows are sorted by attention. Before training, all scores are close to 0, so every word gets about 1/${words.length} of the attention. Training pushes the right word's score far above the rest.</p>`;
+  $('#atParams').textContent = at.net.nParams.toLocaleString('en-US');
+}
+Object.keys(AT_CAT).forEach(q => { const b = document.createElement('button'); b.className = 'btn'; b.dataset.q = q; b.textContent = q + '?'; b.onclick = () => { at.q = q; dirty = true; }; $('#atQs').appendChild(b); });
+$('#atPlay').onclick = () => setAtRunning(!at.running);
+$('#atReset').onclick = () => { setAtRunning(false); atReset(); dirty = true; };
+$('#atNew').onclick = () => { at.sent = atRandom(); dirty = true; };
+
 // ---------------------------------------------------------------- main loop
 let lastT = 0;
 function loop(t){
@@ -2736,6 +3095,8 @@ function loop(t){
   }
   if (tab === 'chat' && !ch.trained){ chTrainFor(14); dirty = true; }
   if (tab === 'chat' && ch.auto){ ch.acc += dt; if (ch.acc >= 0.22){ ch.acc = 0; chStep(); } }
+  if (tab === 'tok' && tk.play){ tk.acc += dt*40; while (tk.acc >= 1){ tk.acc -= 1; if (tk.k < tk.merges.length) tk.k++; else tk.play = false; } dirty = true; }
+  if (tab === 'att' && at.running){ const t0 = performance.now(); while (performance.now() - t0 < 12) atTrain(20); dirty = true; }
   if (dirty){ dirty = false; render(); }
   requestAnimationFrame(loop);
 }
@@ -2778,7 +3139,7 @@ $('#resetW').onclick = () => { resetNet(cur()); dirty = true; };
 $('#newData').onclick = regen;
 $('#showLines').onchange = $('#showTest').onchange = () => { dirty = true; };
 function showTab(t){
-  setRunning(false); setGdRunning(false); setPcRunning(false); setLmRunning(false); setLmAuto(false); setChAuto(false); tab = t; document.body.dataset.tab = t;
+  setRunning(false); setGdRunning(false); setPcRunning(false); setLmRunning(false); setLmAuto(false); setChAuto(false); setAtRunning(false); tk.play = false; tab = t; document.body.dataset.tab = t;
   document.querySelectorAll('.tabs button').forEach(x => x.classList.toggle('on', x.dataset.tab === t));
   document.querySelectorAll('[data-only]').forEach(el => { el.hidden = !el.dataset.only.split(' ').includes(t); });
   if (labs[t]) syncControls();
@@ -2786,7 +3147,7 @@ function showTab(t){
 }
 document.querySelectorAll('.tabs button').forEach(b => b.onclick = () => showTab(b.dataset.tab));
 addEventListener('keydown', e => {
-  if (e.code === 'Space' && !['INPUT', 'SELECT', 'BUTTON', 'TEXTAREA'].includes(document.activeElement.tagName)){ e.preventDefault(); if (tab === 'pc') setPcRunning(!pc.running); else if (tab === 'gd') setGdRunning(!gd.running); else if (tab === 'bp') bpNext(); else if (tab === 'evo') evoGo(evo.i + 1); else if (tab === 'lm'){ setLmAuto(false); lmPick(); } else if (tab === 'chat'){ setChAuto(false); chStep(); } else setRunning(!running); }
+  if (e.code === 'Space' && !['INPUT', 'SELECT', 'BUTTON', 'TEXTAREA'].includes(document.activeElement.tagName)){ e.preventDefault(); if (tab === 'pc') setPcRunning(!pc.running); else if (tab === 'gd') setGdRunning(!gd.running); else if (tab === 'bp') bpNext(); else if (tab === 'evo') evoGo(evo.i + 1); else if (tab === 'lm'){ setLmAuto(false); lmPick(); } else if (tab === 'chat'){ setChAuto(false); chStep(); } else if (tab === 'tok'){ $('#tokPlay').click(); } else if (tab === 'att') setAtRunning(!at.running); else setRunning(!running); }
 });
 addEventListener('resize', () => { dirty = true; });
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { readTokens(); gd.landImg = null; dirty = true; });
@@ -2875,6 +3236,7 @@ bpResetHist(); bpSync();
 pcReset();
 lmBuildCorpus(); lmReset(); lmSync();
 chBuild(); chReset(); chSync();
+atBuild(); atReset(); at.sent = atRandom();
 showTab('pc');
 requestAnimationFrame(loop);
 </script>
