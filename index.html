@@ -141,6 +141,21 @@ kbd{font:11px ui-monospace,monospace;border:1px solid var(--border);border-radiu
 #lmStrip{display:block;width:100%;height:40px;margin-top:10px}
 #lmMap{display:block;width:100%;height:360px}
 #lmCompare th,#lmCompare td{text-align:left;white-space:normal}
+.txt{width:100%;font:inherit;padding:6px 8px;border-radius:8px;border:1px solid var(--border);background:var(--surface-2);color:var(--text)}
+.opt{display:flex;gap:6px;align-items:center;margin:8px 0;color:var(--text-2);font-size:13px;cursor:pointer}
+.chip.tpl{background:transparent;border-style:dashed;border-color:var(--muted);color:var(--text-2)}
+.chip.start{background:transparent;color:var(--muted);font-size:12px;align-self:center}
+.chip.model{background:color-mix(in srgb, var(--accent) 18%, var(--surface));cursor:pointer}
+.chip.unk{color:var(--neg)}
+.chip.win{border-color:var(--accent);border-style:solid}
+.chip.target{border:2px solid var(--s2);font-weight:600}
+.chip.next{background:transparent;border:2px dashed var(--s2);color:var(--s2)}
+.infl{display:grid;grid-template-columns:76px 1fr 104px;gap:8px;align-items:center;margin:5px 0;font-size:13px}
+.infl .bar i{background:var(--s2)}
+.infl b{font-weight:400;text-align:right;font-variant-numeric:tabular-nums;color:var(--text-2);font-size:12px}
+.progress{height:8px;background:var(--surface-2);border-radius:4px;overflow:hidden;margin:6px 0}
+.progress i{display:block;height:100%;background:var(--accent);border-radius:4px}
+.explain ul{padding-left:18px;margin:6px 0}.explain li{margin:0 0 6px}
 @media (max-width:1000px){ .layout{grid-template-columns:minmax(0,1fr);padding:6px 16px 24px} .top{padding:16px 16px 8px} }
 @media (max-width:760px){ .row,.row.wide-left{grid-template-columns:minmax(0,1fr)} #net{height:320px} #bpNet{height:380px} }
 </style>
@@ -159,6 +174,7 @@ kbd{font:11px ui-monospace,monospace;border:1px solid var(--border);border-radiu
     <button data-tab="img" role="tab">5 · Pictures (20×20 pixels)</button>
     <button data-tab="evo" role="tab">6 · Perceptron → LLM</button>
     <button data-tab="lm" role="tab">7 · How an LLM writes</button>
+    <button data-tab="chat" role="tab">8 · Prompt → reply</button>
   </nav>
 </header>
 
@@ -286,6 +302,24 @@ kbd{font:11px ui-monospace,monospace;border:1px solid var(--border);border-radiu
       <p class="cap"><kbd>Space</kbd> adds the next word.</p>
     </section>
 
+    <section class="card" data-only="chat">
+      <div id="chStatus"></div>
+      <h3>Your prompt</h3>
+      <input id="chPrompt" class="txt" type="text" spellcheck="false" autocomplete="off" aria-label="Prompt">
+      <div class="btnrow" style="margin-top:6px">
+        <select id="chQ" aria-label="Question"></select>
+        <select id="chA" aria-label="Animal"></select>
+      </div>
+      <p class="cap">Build a question, or type your own. Words the model has never seen become <span style="color:var(--neg)">unk</span> (unknown).</p>
+      <label class="opt"><input type="checkbox" id="chTpl" checked> Wrap it in the chat template</label>
+      <label class="opt"><input type="checkbox" id="chStop" checked> Stop at the ⟨end⟩ token</label>
+      <label class="ctl">Temperature <output id="chTempOut"></output>
+        <input type="range" id="chTemp" min="0" max="1.5" step="0.05">
+      </label>
+      <div class="btnrow"><button class="btn" id="chRetrain">Retrain the model</button></div>
+      <p class="cap"><kbd>Space</kbd> adds the next token (when you're not typing).</p>
+    </section>
+
     <section class="card" data-only="2d img">
       <div class="btnrow">
         <button class="btn primary" id="play">▶ Train</button>
@@ -404,6 +438,15 @@ kbd{font:11px ui-monospace,monospace;border:1px solid var(--border);border-radiu
         <li><b>The context window.</b> Start from "my cat sleeps on the". With 3 words of context the model only sees "sleeps on the", so it can't tell whether this is a cat or a dog. Switch to 5 words, retrain, and try again. LLMs use attention (lab 6) to see thousands of tokens.</li>
         <li><b>Click a bar</b> to choose the next word yourself.</li>
         <li><b>The word map</b> shows the model's embeddings. Train for 20+ epochs and words that are followed by the same things drift together: cat next to kitten, dog next to puppy, rug next to porch and floor.</li>
+      </ol>
+      <ol data-only="chat" style="margin-top:10px">
+        <li><b>Press Write the reply.</b> The model continues the text one token at a time. Your prompt and its reply are one piece of text, and each new token is predicted from the tokens before it.</li>
+        <li><b>Click "cat" in the reply.</b> Two tokens matter. The "the" just before it says a noun comes next. The "cat" in your prompt says <i>which</i> noun: hide it and the model has to guess the animal. Then click "fish": it relies on "cat" and "eats".</li>
+        <li><b>Change the animal</b> (cat → cow) and write again. Same question, different answer, because different prompt tokens give different next-token probabilities.</li>
+        <li><b>Turn off the chat template</b> and type "the cow". Nothing marks where a reply should start, so it just continues the text, like a base model before chat training.</li>
+        <li><b>Turn off "Stop at the ⟨end⟩ token".</b> After its reply it often writes "user :" and makes up your next question. Real chat apps stop at the end token for exactly this reason.</li>
+        <li><b>Ask something it never learned</b>, like "what does the cat drink ?". It doesn't know "drink", but it still answers fluently and confidently. Real LLMs can do the same when they lack knowledge (hallucination).</li>
+        <li><b>Sample 5 replies</b> at temperature 1. One prompt can produce several different replies.</li>
       </ol>
     </section>
   </aside>
@@ -593,6 +636,57 @@ kbd{font:11px ui-monospace,monospace;border:1px solid var(--border);border-radiu
       <section class="card">
         <div class="cardhead"><h2>Some of the training text</h2><span class="cap" id="lmCorpusNote"></span></div>
         <div id="lmCorpus" class="mono"></div>
+      </section>
+    </div>
+
+    <section class="card" data-only="chat">
+      <div class="cardhead"><h2>What the model actually receives: one piece of text</h2>
+        <div class="legend">
+          <span><span class="chip tpl" style="font-size:11px;padding:0 5px">user</span> template</span>
+          <span><span class="chip" style="font-size:11px;padding:0 5px">cat</span> your prompt</span>
+          <span><span class="chip model" style="font-size:11px;padding:0 5px">fish</span> model's reply</span>
+          <span><span class="chip win" style="font-size:11px;padding:0 5px">&nbsp;&nbsp;</span> what it sees</span>
+        </div>
+      </div>
+      <div id="chStrip" class="chips" style="min-height:70px"></div>
+      <div class="btnrow" style="margin-top:12px">
+        <button class="btn primary" id="chNext">Next token</button>
+        <button class="btn" id="chWrite">Write the reply</button>
+        <button class="btn" id="chErase">Erase the reply</button>
+      </div>
+      <p id="chNote" style="font-size:14px;margin-top:8px"></p>
+    </section>
+    <div class="row" data-only="chat">
+      <section class="card">
+        <div class="cardhead"><h2>What comes next?</h2><span class="cap">click a bar to choose it yourself</span></div>
+        <div id="chBars"></div>
+      </section>
+      <section class="card">
+        <div class="cardhead"><h2 id="chInfTitle">Which earlier tokens mattered?</h2></div>
+        <div id="chInf"></div>
+        <p class="cap">How it's measured: hide one token from the model (replace it with an average, meaningless embedding) and see how far the chance of the highlighted token falls. A big drop means the model relied on that token. Click any word in the reply to inspect it.</p>
+      </section>
+    </div>
+    <div class="row" data-only="chat">
+      <section class="card">
+        <div class="cardhead"><h2>Same prompt, five replies</h2><button class="btn" id="chFive">Sample 5 replies</button></div>
+        <div id="chFiveOut" class="mono"></div>
+        <p class="cap">Each reply token is drawn at random from the probabilities, so one prompt can produce different replies. At temperature 0 it always takes the top token, and all five replies are the same.</p>
+      </section>
+      <section class="card">
+        <div class="cardhead"><h2>How real chatbots do it</h2></div>
+        <div class="explain">
+          <p>A chat app never hands the model "a question". It builds one long text and asks the model to continue it. A typical layout is below. Each model family uses its own special marker tokens.</p>
+          <div class="eq">⟨system⟩ You are a helpful assistant. Keep answers short.<br>⟨user⟩ What does a cat eat?<br>⟨assistant⟩ <span style="color:var(--s1)">Cats are carnivores. They mostly eat meat and fish.</span> ⟨end⟩</div>
+          <ul>
+            <li><b>The system prompt is just more text</b> at the top. Like your message, it steers the reply only by changing the next-token probabilities.</li>
+            <li><b>Every reply token can see the whole conversation</b>, not just the last 10 tokens like this toy. Attention (lab 6) lets each new token look back at every earlier one, up to the context window limit.</li>
+            <li><b>The model has no memory between messages.</b> Every turn, the app sends the whole conversation again. Memory features work the same way: they paste saved notes into the text.</li>
+            <li><b>It replies instead of rambling on</b> because, after pre-training on huge amounts of ordinary text, it was fine-tuned on many example conversations in this format and on human ratings of replies. The toy here learned from <span id="chNChats"></span> example chats.</li>
+            <li><b>It stops when it writes the end token.</b> The app cuts the text there and shows you only the part after the assistant marker.</li>
+          </ul>
+          <p class="cap">One of this toy's training texts: <span id="chSample" class="mono"></span></p>
+        </div>
       </section>
     </div>
 
@@ -1261,6 +1355,7 @@ function render(){
   if (tab === 'bp') return renderBP();
   if (tab === 'evo') return renderEvo();
   if (tab === 'lm') return renderLM();
+  if (tab === 'chat') return renderChat();
   const lab = cur();
   if (lab.kind === '2d') render2d(lab);
   else { renderPad(lab); renderTiles(lab); updateGallery(lab); }
@@ -2203,9 +2298,12 @@ class TinyLM {
     this.dh = new Float32Array(H); this.dx = new Float32Array(I);
   }
   get nParams(){ return this.E.length + this.W1.length + this.b1.length + this.W2.length + this.b2.length; }
-  forward(ctx){
+  forward(ctx, mask = -1){ // mask: a context position to hide by giving it the average embedding
     const { D, H, I, V, x, h, logits, p, E, W1, b1, W2, b2 } = this;
-    for (let k = 0; k < this.n; k++) for (let d = 0; d < D; d++) x[k*D+d] = E[ctx[k]*D+d];
+    for (let k = 0; k < this.n; k++) for (let d = 0; d < D; d++){
+      if (k !== mask){ x[k*D+d] = E[ctx[k]*D+d]; continue; }
+      let s = 0; for (let v = 0; v < V; v++) s += E[v*D+d]; x[k*D+d] = s/V;
+    }
     for (let j = 0; j < H; j++){ let s = b1[j]; const o = j*I; for (let i = 0; i < I; i++) s += W1[o+i]*x[i]; h[j] = Math.tanh(s); }
     let m = -Infinity;
     for (let v = 0; v < V; v++){ let s = b2[v]; const o = v*H; for (let j = 0; j < H; j++) s += W2[o+j]*h[j]; logits[v] = s; if (s > m) m = s; }
@@ -2439,6 +2537,190 @@ function lmSync(){
   $('#lmTemp').value = lm.temp; $('#lmTempOut').textContent = lm.temp.toFixed(2); $('#lmTopK').value = lm.topk;
 }
 
+// ---------------------------------------------------------------- lab: prompt → reply
+// The same kind of tiny model as lab 7, with a 10-token window, trained on short chats ("user : question bot : answer end")
+// mixed with plain text, so we can watch how the prompt shapes the reply.
+const CH_AN = {
+  cat:   { food:['fish', 'mice'],    says:'meow',  sleep:'on the sofa',   legs:'four', fly:0 },
+  dog:   { food:['bones', 'meat'],   says:'woof',  sleep:'in the kennel', legs:'four', fly:0 },
+  cow:   { food:['grass', 'hay'],    says:'moo',   sleep:'in the barn',   legs:'four', fly:0 },
+  horse: { food:['hay', 'apples'],   says:'neigh', sleep:'in the stable', legs:'four', fly:0 },
+  bird:  { food:['seeds', 'worms'],  says:'tweet', sleep:'in a nest',     legs:'two',  fly:1 },
+  duck:  { food:['bread', 'worms'],  says:'quack', sleep:'on the pond',   legs:'two',  fly:1 },
+};
+const CH_Q = {
+  eat:   { label:'What does … eat?',      q: x => `what does the ${x} eat ?`,          a: (x, f) => `the ${x} eats ${f || pick(CH_AN[x].food)} .` },
+  say:   { label:'What does … say?',      q: x => `what does the ${x} say ?`,          a: x => `the ${x} says ${CH_AN[x].says} .` },
+  sleep: { label:'Where does … sleep?',   q: x => `where does the ${x} sleep ?`,       a: x => `the ${x} sleeps ${CH_AN[x].sleep} .` },
+  legs:  { label:'How many legs?',        q: x => `how many legs does the ${x} have ?`, a: x => `the ${x} has ${CH_AN[x].legs} legs .` },
+  fly:   { label:'Can … fly?',            q: x => `can the ${x} fly ?`,                a: x => CH_AN[x].fly ? `yes , the ${x} can fly .` : `no , the ${x} can not fly .` },
+};
+const CH_EPOCHS = 5;
+const ch = { n:10, temp:0.7, tpl:true, stop:true, gen:[], sel:-1, auto:false, acc:0, five:null };
+function chBuild(){
+  const A = Object.keys(CH_AN), Q = Object.keys(CH_Q), docs = []; let chats = 0;
+  for (let i = 0; i < 420; i++){
+    const x = pick(A);
+    if (Math.random() < 0.8){ // a chat of 1–3 turns about one animal
+      const turns = 1 + (Math.random()*3 | 0), parts = [];
+      for (let k = 0; k < turns; k++){ const q = pick(Q); parts.push(`user : ${CH_Q[q].q(x)} bot : ${CH_Q[q].a(x)} end`); }
+      docs.push(parts.join(' ')); chats++;
+    }
+    else docs.push([0, 1, 2].map(() => CH_Q[pick(Q)].a(x)).join(' ') + ' end'); // plain text, no chat template
+  }
+  const words = new Set(['end', 'unk', 'user', 'bot', ':']);
+  for (const x of A) for (const q of Q){ for (const f of [...CH_AN[x].food, '']) for (const t of (CH_Q[q].q(x) + ' ' + CH_Q[q].a(x, f || undefined)).split(' ')) words.add(t); }
+  ch.vocab = [...words]; ch.id = Object.fromEntries(ch.vocab.map((t, i) => [t, i]));
+  ch.ids = ('end ' + docs.join(' ')).split(' ').map(t => ch.id[t]);
+  ch.chats = chats; ch.sample = docs.find(d => d.startsWith('user'));
+}
+function chReset(){
+  ch.net = new TinyLM(ch.vocab.length, ch.n, 12, 64);
+  ch.epoch = 0; ch.pos = 0; ch.sum = 0; ch.trained = false; ch.loss = null;
+  ch.order = shuffle([...Array(ch.ids.length - 1).keys()].map(i => i + 1));
+  ch.gen = []; ch.sel = -1; ch.five = null;
+}
+const chWindow = (seq, upto) => { const c = seq.slice(Math.max(0, upto - ch.n), upto); while (c.length < ch.n) c.unshift(ch.id.end); return c; };
+function chTrainFor(ms){
+  const t0 = performance.now();
+  while (!ch.trained && performance.now() - t0 < ms) for (let k = 0; k < 40 && !ch.trained; k++){
+    const i = ch.order[ch.pos++];
+    ch.sum += ch.net.train(chWindow(ch.ids, i), ch.ids[i], 0.05);
+    if (ch.pos >= ch.order.length){
+      ch.epoch++; ch.loss = ch.sum/ch.order.length; ch.sum = 0; ch.pos = 0; shuffle(ch.order);
+      if (ch.epoch >= CH_EPOCHS) ch.trained = true;
+    }
+  }
+}
+function chTokenize(s){
+  return s.toLowerCase().replace(/([?.,!])/g, ' $1 ').split(/\s+/).filter(Boolean)
+    .map(w => ({ v: w in ch.id && !['end', 'unk'].includes(w) ? ch.id[w] : ch.id.unk, w }));
+}
+function chSeq(){ // the whole text the model works on, as tokens with roles
+  const id = ch.id, out = [{ v: id.end, role: 'start' }];
+  if (ch.tpl) out.push({ v: id.user, role: 'tpl' }, { v: id[':'], role: 'tpl' });
+  for (const t of chTokenize($('#chPrompt').value)) out.push({ ...t, role: 'you' });
+  if (ch.tpl) out.push({ v: id.bot, role: 'tpl' }, { v: id[':'], role: 'tpl' });
+  const base = out.length;
+  ch.gen.forEach((v, i) => out.push({ v, role: 'model', g: i }));
+  return { toks: out, ids: out.map(t => t.v), base };
+}
+function chDist(ctx){
+  const net = ch.net, p = net.forward(ctx), V = p.length, lg = Float32Array.from(net.logits), raw = Float32Array.from(p);
+  const order = [...Array(V).keys()].sort((a, b) => lg[b] - lg[a]), adj = new Float32Array(V);
+  if (ch.temp < 0.01) adj[order[0]] = 1;
+  else { let s = 0; for (let v = 0; v < V; v++){ adj[v] = Math.exp((lg[v] - lg[order[0]])/ch.temp); s += adj[v]; } for (let v = 0; v < V; v++) adj[v] /= s; }
+  return { raw, adj, order };
+}
+function chSample(d){ const r = Math.random(); let acc = 0; for (const v of d.order){ acc += d.adj[v]; if (r < acc) return v; } return d.order[0]; }
+const chDone = () => ch.stop && ch.gen.length && ch.gen[ch.gen.length - 1] === ch.id.end;
+function chStep(choice){
+  if (chDone() || ch.gen.length >= 40){ setChAuto(false); return; }
+  const S = chSeq(), ctx = chWindow(S.ids, S.ids.length);
+  ch.gen.push(choice ?? chSample(chDist(ctx)));
+  ch.sel = -1; ch.five = null; dirty = true;
+  if (chDone() || ch.gen.length >= 40) setChAuto(false);
+}
+function setChAuto(v){ ch.auto = v; ch.acc = 0; $('#chWrite').textContent = v ? '■ Stop' : 'Write the reply'; }
+function chInfluence(ctx, target){
+  const net = ch.net, p0 = net.forward(ctx)[target], rows = [];
+  for (let k = 0; k < ch.n; k++){ const pk = net.forward(ctx, k)[target]; rows.push({ pk, drop: Math.max(0, Math.log(p0) - Math.log(Math.max(pk, 1e-12))) }); }
+  return { p0, rows };
+}
+const chName = v => v === ch.id.end ? '⟨end⟩' : ch.vocab[v];
+const chReplyText = gen => { const cut = gen.indexOf(ch.id.end); return (cut >= 0 ? gen.slice(0, cut) : gen).map(v => ch.vocab[v]).join(' '); };
+
+function renderChat(){
+  const S = chSeq(), net = ch.net, pct = v => (v*100).toFixed(v < 0.1 ? 1 : 0) + '%';
+  // status
+  $('#chStatus').innerHTML = !ch.trained
+    ? `<b>Training the model…</b><div class="progress"><i style="width:${((ch.epoch + ch.pos/ch.order.length)/CH_EPOCHS*100).toFixed(0)}%"></i></div><p class="cap">It reads ${ch.chats} example chats and ${420 - ch.chats} plain texts ${CH_EPOCHS} times over. Until it finishes, the replies are nonsense.</p>`
+    : `<div class="stats" style="margin-top:0"><div class="stat"><span>Vocabulary</span><b>${ch.vocab.length} tokens</b></div><div class="stat"><span>Weights</span><b>${net.nParams.toLocaleString('en-US')}</b></div>` +
+      `<div class="stat"><span>Context window</span><b>${ch.n} tokens</b></div><div class="stat"><span>Training loss</span><b>${ch.loss.toFixed(2)}</b></div></div>`;
+  // which token are we explaining? a clicked reply token, or else the next token's top prediction
+  const nextCtx = chWindow(S.ids, S.ids.length), dNext = chDist(nextCtx), finished = chDone() || ch.gen.length >= 40;
+  let tIdx, target;
+  if (ch.sel >= 0 && ch.sel < ch.gen.length){ tIdx = S.base + ch.sel; target = S.ids[tIdx]; }
+  else { ch.sel = -1; tIdx = S.ids.length; target = dNext.order[0]; }
+  const ctx = chWindow(S.ids, tIdx), inf = chInfluence(ctx, target);
+  const maxDrop = Math.max(0.5, ...inf.rows.map(r => r.drop)), w0 = tIdx - ch.n;
+  // strip
+  let html = '';
+  S.toks.forEach((t, i) => {
+    const cls = ['chip', t.role];
+    if (t.v === ch.id.unk && t.role === 'you') cls.push('unk');
+    if (i >= w0 && i < tIdx) cls.push('win');
+    if (i === tIdx) cls.push('target');
+    const k = i - w0, tintPct = i >= w0 && i < tIdx ? Math.round(55*inf.rows[k].drop/maxDrop) : 0;
+    const style = tintPct > 3 ? ` style="background:color-mix(in srgb, var(--s2) ${tintPct}%, var(--surface))"` : '';
+    const label = t.role === 'start' ? '⟨start⟩' : t.role === 'you' ? esc(t.w) : esc(chName(t.v));
+    const title = t.role === 'you' && t.v === ch.id.unk ? ` title="Not in the model's vocabulary, so it becomes the unknown token"` : t.role === 'model' ? ' title="Click to see which earlier tokens this one depended on"' : '';
+    html += `<span class="${cls.join(' ')}"${style}${title}${t.role === 'model' ? ` data-g="${t.g}"` : ''}>${label}</span>`;
+  });
+  if (ch.sel < 0 && !finished) html += `<span class="chip next">?</span>`;
+  $('#chStrip').innerHTML = html;
+  document.querySelectorAll('#chStrip [data-g]').forEach(el => el.onclick = () => { ch.sel = ch.sel === +el.dataset.g ? -1 : +el.dataset.g; setChAuto(false); dirty = true; });
+  $('#chNext').disabled = finished;
+  // note under the strip
+  const reply = chReplyText(ch.gen), endAt = ch.gen.indexOf(ch.id.end);
+  $('#chNote').innerHTML = !ch.gen.length
+    ? (ch.tpl ? 'Your prompt has been wrapped in the chat template. The "bot :" at the end is the cue for a reply. Now the model just continues this text, one token at a time.'
+              : 'No chat template: nothing tells the model a reply is wanted. It will simply continue your text.')
+    : endAt >= 0 && endAt < ch.gen.length - 1
+      ? `It kept going past ⟨end⟩. The model doesn't know the reply is over unless someone stops it. It is now writing the next turn itself.`
+    : chDone()
+      ? `The model wrote ⟨end⟩, so it stops here. A chat app would show you just the reply: <b>“${esc(reply)}”</b>`
+      : `${ch.gen.length} token${ch.gen.length > 1 ? 's' : ''} written. Each one was predicted from the ${ch.n} tokens before it: prompt and reply alike.`;
+  // next-token bars
+  $('#chBars').innerHTML = finished ? '<p class="cap">The reply is finished. Erase it, change the prompt, or turn off "Stop at the ⟨end⟩ token".</p>'
+    : dNext.order.slice(0, 8).map(v => `<button class="tok" data-v="${v}" title="Model's raw probability ${pct(dNext.raw[v])}">` +
+      `<span>${esc(chName(v))}</span><div class="bar"><i style="width:${dNext.adj[v]*100}%"></i><u style="left:${dNext.raw[v]*100}%"></u></div><b>${pct(dNext.adj[v])}</b></button>`).join('');
+  document.querySelectorAll('#chBars .tok').forEach(b => b.onclick = () => { setChAuto(false); chStep(+b.dataset.v); });
+  // influence panel
+  $('#chInfTitle').textContent = ch.sel >= 0 ? `Why did it write "${chName(target)}"?` : `Why would it write "${chName(target)}" next?`;
+  let rows = '';
+  inf.rows.forEach((r, k) => {
+    const i = w0 + k; if (i < 0) return;
+    const t = S.toks[i], name = t.role === 'start' ? '⟨start⟩' : t.role === 'you' ? t.w : chName(t.v);
+    rows += `<div class="infl"><span>${esc(name)}</span><div class="bar"><i style="width:${(r.drop/maxDrop*100).toFixed(0)}%"></i></div><b>hidden: ${pct(r.pk)}</b></div>`;
+  });
+  const best = inf.rows.map((r, k) => ({ ...r, i: w0 + k })).filter(r => r.i >= 0).sort((a, b) => b.drop - a.drop)[0];
+  const bt = best && S.toks[best.i], bname = bt ? (bt.role === 'you' ? bt.w : chName(bt.v)) : '';
+  const where = bt ? (bt.role === 'you' ? 'from your prompt' : bt.role === 'model' ? 'from its own reply so far' : bt.role === 'tpl' ? 'from the chat template' : '') : '';
+  $('#chInf').innerHTML = `<p style="margin-top:0">With all ${ch.n} tokens visible, the model gives <b>"${esc(chName(target))}"</b> a ${pct(inf.p0)} chance.` +
+    (best && best.drop > 0.3 ? ` It leans most on <b>"${esc(bname)}"</b> ${where}: hide it and the chance falls to ${pct(best.pk)}.` : ' No single token matters much here.') + '</p>' + rows;
+  // five replies
+  $('#chFiveOut').innerHTML = ch.five ? ch.five.map((r, i) => `${i + 1}. ${esc(r) || '<i>(empty)</i>'}`).join('<br>') : '<span style="color:var(--muted)">Press the button to ask the same question five times.</span>';
+  $('#chNChats').textContent = ch.chats;
+  $('#chSample').textContent = ch.sample.replace(/ end$/, ' ⟨end⟩');
+}
+
+$('#chPrompt').addEventListener('input', () => { setChAuto(false); ch.gen = []; ch.sel = -1; ch.five = null; dirty = true; });
+for (const [k, q] of Object.entries(CH_Q)) $('#chQ').add(new Option(q.label, k));
+for (const a of Object.keys(CH_AN)) $('#chA').add(new Option(a, a));
+const chBuildPrompt = () => { $('#chPrompt').value = CH_Q[$('#chQ').value].q($('#chA').value); $('#chPrompt').dispatchEvent(new Event('input')); };
+$('#chQ').onchange = $('#chA').onchange = chBuildPrompt;
+$('#chTpl').onchange = e => { ch.tpl = e.target.checked; setChAuto(false); ch.gen = []; ch.sel = -1; ch.five = null; dirty = true; };
+$('#chStop').onchange = e => { ch.stop = e.target.checked; dirty = true; };
+$('#chTemp').oninput = e => { ch.temp = +e.target.value; $('#chTempOut').textContent = ch.temp < 0.01 ? '0 (greedy)' : ch.temp.toFixed(2); dirty = true; };
+$('#chNext').onclick = () => { setChAuto(false); chStep(); };
+$('#chWrite').onclick = () => { if (ch.auto) return setChAuto(false); if (chDone() || ch.gen.length >= 40) ch.gen = []; setChAuto(true); };
+$('#chErase').onclick = () => { setChAuto(false); ch.gen = []; ch.sel = -1; dirty = true; };
+$('#chRetrain').onclick = () => { setChAuto(false); chBuild(); chReset(); dirty = true; };
+$('#chFive').onclick = () => {
+  const S = chSeq(), base = S.ids.slice(0, S.base), out = [];
+  for (let r = 0; r < 5; r++){
+    const seq = [...base], gen = [];
+    while (gen.length < 30){ const v = chSample(chDist(chWindow(seq, seq.length))); seq.push(v); gen.push(v); if (v === ch.id.end && ch.stop) break; }
+    out.push(ch.stop ? chReplyText(gen) : gen.map(chName).join(' '));
+  }
+  ch.five = out; dirty = true;
+};
+function chSync(){
+  $('#chQ').value = 'eat'; $('#chA').value = 'cat'; $('#chPrompt').value = CH_Q.eat.q('cat');
+  $('#chTemp').value = ch.temp; $('#chTempOut').textContent = ch.temp.toFixed(2);
+}
+
 // ---------------------------------------------------------------- main loop
 let lastT = 0;
 function loop(t){
@@ -2452,6 +2734,8 @@ function loop(t){
     lm.genAcc += dt;
     if (lm.genAcc >= 0.3){ lm.genAcc = 0; const v = lmPick(); lm.autoCount++; if (lm.vocab[v] === '.' || lm.autoCount >= 25) setLmAuto(false); }
   }
+  if (tab === 'chat' && !ch.trained){ chTrainFor(14); dirty = true; }
+  if (tab === 'chat' && ch.auto){ ch.acc += dt; if (ch.acc >= 0.22){ ch.acc = 0; chStep(); } }
   if (dirty){ dirty = false; render(); }
   requestAnimationFrame(loop);
 }
@@ -2494,7 +2778,7 @@ $('#resetW').onclick = () => { resetNet(cur()); dirty = true; };
 $('#newData').onclick = regen;
 $('#showLines').onchange = $('#showTest').onchange = () => { dirty = true; };
 function showTab(t){
-  setRunning(false); setGdRunning(false); setPcRunning(false); setLmRunning(false); setLmAuto(false); tab = t; document.body.dataset.tab = t;
+  setRunning(false); setGdRunning(false); setPcRunning(false); setLmRunning(false); setLmAuto(false); setChAuto(false); tab = t; document.body.dataset.tab = t;
   document.querySelectorAll('.tabs button').forEach(x => x.classList.toggle('on', x.dataset.tab === t));
   document.querySelectorAll('[data-only]').forEach(el => { el.hidden = !el.dataset.only.split(' ').includes(t); });
   if (labs[t]) syncControls();
@@ -2502,7 +2786,7 @@ function showTab(t){
 }
 document.querySelectorAll('.tabs button').forEach(b => b.onclick = () => showTab(b.dataset.tab));
 addEventListener('keydown', e => {
-  if (e.code === 'Space' && !['INPUT', 'SELECT', 'BUTTON', 'TEXTAREA'].includes(document.activeElement.tagName)){ e.preventDefault(); if (tab === 'pc') setPcRunning(!pc.running); else if (tab === 'gd') setGdRunning(!gd.running); else if (tab === 'bp') bpNext(); else if (tab === 'evo') evoGo(evo.i + 1); else if (tab === 'lm'){ setLmAuto(false); lmPick(); } else setRunning(!running); }
+  if (e.code === 'Space' && !['INPUT', 'SELECT', 'BUTTON', 'TEXTAREA'].includes(document.activeElement.tagName)){ e.preventDefault(); if (tab === 'pc') setPcRunning(!pc.running); else if (tab === 'gd') setGdRunning(!gd.running); else if (tab === 'bp') bpNext(); else if (tab === 'evo') evoGo(evo.i + 1); else if (tab === 'lm'){ setLmAuto(false); lmPick(); } else if (tab === 'chat'){ setChAuto(false); chStep(); } else setRunning(!running); }
 });
 addEventListener('resize', () => { dirty = true; });
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { readTokens(); gd.landImg = null; dirty = true; });
@@ -2590,6 +2874,7 @@ gdNewData(); gdSyncControls();
 bpResetHist(); bpSync();
 pcReset();
 lmBuildCorpus(); lmReset(); lmSync();
+chBuild(); chReset(); chSync();
 showTab('pc');
 requestAnimationFrame(loop);
 </script>
