@@ -1,0 +1,1877 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Neurotic</title>
+<style>
+:root{
+  color-scheme: light;
+  --bg:#f4f4f1; --surface:#fcfcfb; --surface-2:#eeede8; --border:#dddbd3;
+  --text:#0b0b0b; --text-2:#52514e; --muted:#7a7974;
+  --cat:#6250d6; --dog:#eda100;          /* class identity */
+  --pos:#2a78d6; --neg:#e34948;          /* weight / activation sign */
+  --s1:#2a78d6;  --s2:#eb6834;           /* chart series: train, test */
+  --seq:#2a78d6;                         /* sequential: loss magnitude */
+  --accent:#2a78d6; --accent-ink:#ffffff; --warn:#b54708;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme: dark;
+    --bg:#111110; --surface:#1a1a19; --surface-2:#262624; --border:#363531;
+    --text:#f0efec; --text-2:#c3c2b7; --muted:#8f8e86;
+    --cat:#9085e9; --dog:#c98500; --pos:#3987e5; --neg:#e66767;
+    --s1:#3987e5; --s2:#d95926; --seq:#3987e5; --accent:#3987e5; --accent-ink:#ffffff; --warn:#f0a050;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme: dark;
+  --bg:#111110; --surface:#1a1a19; --surface-2:#262624; --border:#363531;
+  --text:#f0efec; --text-2:#c3c2b7; --muted:#8f8e86;
+  --cat:#9085e9; --dog:#c98500; --pos:#3987e5; --neg:#e66767;
+  --s1:#3987e5; --s2:#d95926; --seq:#3987e5; --accent:#3987e5; --accent-ink:#ffffff; --warn:#f0a050;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--text);font:14px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+h1{font-size:22px;margin:0;letter-spacing:-.01em}
+h2{font-size:15px;margin:0}
+h3{font-size:12px;margin:14px 0 6px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+h4{font-size:13px;margin:10px 0 4px}
+p{margin:6px 0}
+.top{display:flex;flex-wrap:wrap;gap:12px 24px;align-items:flex-end;justify-content:space-between;padding:18px 20px 10px;max-width:1500px;margin:0 auto}
+.sub{color:var(--text-2);margin:2px 0 0}
+.tabs{display:flex;flex-wrap:wrap;gap:4px;background:var(--surface-2);padding:4px;border-radius:10px}
+.tabs button{border:0;background:transparent;color:var(--text-2);padding:7px 14px;border-radius:7px;font:inherit;cursor:pointer}
+.tabs button.on{background:var(--surface);color:var(--text);box-shadow:0 1px 2px rgba(0,0,0,.12)}
+.layout{display:grid;grid-template-columns:280px minmax(0,1fr);gap:14px;padding:6px 20px 30px;max-width:1500px;margin:0 auto}
+.side,.mainc{display:flex;flex-direction:column;gap:14px;min-width:0}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px;min-width:0}
+.cardhead{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:6px 14px;margin-bottom:8px}
+.row{display:grid;gap:14px;grid-template-columns:repeat(2,minmax(0,1fr))}
+.cap{color:var(--text-2);font-size:12.5px}
+button{font:inherit}
+.btnrow{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px}
+.btn{border:1px solid var(--border);background:var(--surface-2);color:var(--text);padding:6px 10px;border-radius:8px;cursor:pointer}
+.btn:hover{border-color:var(--muted)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);min-width:92px}
+.btn.on{outline:2px solid var(--accent);outline-offset:-1px}
+label.ctl{display:block;margin:8px 0;color:var(--text-2);font-size:13px}
+label.ctl output{float:right;color:var(--text);font-variant-numeric:tabular-nums}
+label.ctl select,label.ctl input[type=range]{display:block;width:100%;margin-top:4px}
+select{font:inherit;padding:4px 6px;border-radius:6px;border:1px solid var(--border);background:var(--surface-2);color:var(--text)}
+input[type=range]{accent-color:var(--accent)}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:8px 0 2px}
+.stat{background:var(--surface-2);border-radius:8px;padding:6px 8px}
+.stat span{display:block;font-size:11px;color:var(--muted)}
+.stat b{font-size:17px;font-variant-numeric:tabular-nums}
+.warnmsg{grid-column:1/-1;color:var(--warn);font-size:12.5px}
+.tips ol{padding-left:18px;margin:0}
+.tips li{margin:0 0 8px;color:var(--text-2)}
+.tips li b{color:var(--text)}
+.legend{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:12.5px;color:var(--text-2);align-items:center}
+.legend svg{vertical-align:-2px;margin-right:4px}
+.plot{display:block;width:100%;aspect-ratio:1/1;max-height:560px;cursor:crosshair;touch-action:none}
+#net{display:block;width:100%;height:400px}
+.chart{display:block;width:100%;height:190px}
+.mono{font:12.5px/1.6 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:var(--text-2);overflow-x:auto}
+.mono .hl{color:var(--text)}
+.mono h4{font-family:system-ui,sans-serif;color:var(--text)}
+.hoodgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:0 24px}
+.opts{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:12.5px;color:var(--text-2)}
+.opts label{cursor:pointer}
+.inspector{display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start}
+#pad{width:min(100%,260px);aspect-ratio:1/1;border-radius:6px;cursor:crosshair;touch-action:none;display:block}
+.probs{flex:1;min-width:180px}
+.prob{display:grid;grid-template-columns:36px 1fr 46px;align-items:center;gap:8px;margin:8px 0}
+.bar{height:12px;background:var(--surface-2);border-radius:4px;overflow:hidden}
+.bar i{display:block;height:100%;border-radius:0 4px 4px 0;transition:width .12s}
+.prob b{text-align:right;font-variant-numeric:tabular-nums}
+#verdict{font-size:15px;margin:10px 0}
+.tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(78px,1fr));gap:10px}
+.tile{margin:0;text-align:center}
+.tile canvas{width:100%;aspect-ratio:1/1;image-rendering:pixelated;border-radius:4px;display:block}
+.tile figcaption{font-size:11.5px;color:var(--text-2);font-variant-numeric:tabular-nums}
+.gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(66px,1fr));gap:8px}
+.gimg{border:2px solid transparent;background:var(--surface-2);border-radius:8px;padding:4px;cursor:pointer;color:var(--text-2);font-size:11px}
+.gimg canvas{width:100%;aspect-ratio:1/1;image-rendering:pixelated;display:block;border-radius:4px}
+.gimg.wrong{border-color:var(--neg)}
+.gimg.wrong span::before{content:"✗ ";color:var(--neg);font-weight:700}
+#tip{position:fixed;pointer-events:none;z-index:10;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:6px 9px;font-size:12.5px;box-shadow:0 4px 14px rgba(0,0,0,.18);display:none;max-width:280px}
+[hidden]{display:none !important}
+.plot.sq{max-width:460px;margin:0 auto}
+#pcNet{display:block;width:100%;height:190px}
+.row.wide-left{grid-template-columns:minmax(0,3fr) minmax(0,2fr)}
+#bpNet{display:block;width:100%;height:420px}
+#gdData{height:240px}
+.explain{font-size:14px;line-height:1.55}
+.explain p{margin:8px 0}
+.eq{font:13px/1.7 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;background:var(--surface-2);border-radius:8px;padding:8px 10px;margin:8px 0;overflow-x:auto}
+.fw{border-bottom:3px solid var(--s1);font-weight:600}
+.bw{border-bottom:3px solid var(--s2);font-weight:600}
+.tablewrap{overflow-x:auto}
+table.grad{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums;font-size:13px}
+table.grad th,table.grad td{padding:6px 8px;border-bottom:1px solid var(--border);text-align:right;white-space:nowrap}
+table.grad th:nth-child(-n+2),table.grad td:nth-child(-n+2){text-align:left}
+table.grad th{color:var(--muted);font-weight:500;font-size:12px}
+table.grad tr.hlrow td{background:var(--surface-2)}
+kbd{font:11px ui-monospace,monospace;border:1px solid var(--border);border-radius:4px;padding:0 4px;background:var(--surface-2)}
+@media (max-width:1000px){ .layout{grid-template-columns:minmax(0,1fr);padding:6px 16px 24px} .top{padding:16px 16px 8px} }
+@media (max-width:760px){ .row,.row.wide-left{grid-template-columns:minmax(0,1fr)} #net{height:320px} #bpNet{height:380px} }
+</style>
+</head>
+<body data-tab="pc">
+<header class="top">
+  <div>
+    <h1>Neurotic</h1>
+    <p class="sub">A tiny neural network you can watch learn to tell cats from dogs.</p>
+  </div>
+  <nav class="tabs" role="tablist">
+    <button data-tab="pc" class="on" role="tab">1 · Perceptron &amp; XOR</button>
+    <button data-tab="2d" role="tab">2 · Two features</button>
+    <button data-tab="gd" role="tab">3 · Gradient descent</button>
+    <button data-tab="bp" role="tab">4 · Backpropagation</button>
+    <button data-tab="img" role="tab">5 · Pictures (20×20 pixels)</button>
+  </nav>
+</header>
+
+<main class="layout">
+  <aside class="side">
+    <section class="card" data-only="pc">
+      <div class="btnrow">
+        <button class="btn primary" id="pcPlay">▶ Run</button>
+        <button class="btn" id="pcStepBtn">Next example</button>
+      </div>
+      <div class="btnrow"><button class="btn" id="pcRestart">New random weights</button></div>
+      <div class="stats" id="pcStats"></div>
+      <h3>Problem</h3>
+      <div class="btnrow">
+        <button class="btn" data-gate="AND">AND</button>
+        <button class="btn" data-gate="OR">OR</button>
+        <button class="btn" data-gate="NAND">NAND</button>
+        <button class="btn" data-gate="XOR">XOR</button>
+      </div>
+      <p class="cap">Or click a dot on the plot to flip its target and make your own problem.</p>
+      <h3>Learning</h3>
+      <label class="ctl">Learning rate η <output id="pcLrOut"></output>
+        <input type="range" id="pcLr" min="0.05" max="1" step="0.05">
+      </label>
+      <label class="ctl">Speed <output id="pcSpeedOut"></output>
+        <input type="range" id="pcSpeed" min="1" max="30" step="1">
+      </label>
+      <p class="cap"><kbd>Space</kbd> runs or pauses.</p>
+    </section>
+    <section class="card" data-only="gd">
+      <div class="btnrow">
+        <button class="btn primary" id="gdPlay">▶ Run</button>
+        <button class="btn" id="gdStepBtn">Take 1 step</button>
+        <button class="btn" id="gdRestart">Restart</button>
+      </div>
+      <div class="stats" id="gdStats"></div>
+      <h3>Gradient descent</h3>
+      <label class="ctl">Learning rate η <output id="gdLrOut"></output>
+        <input type="range" id="gdLr" min="0" max="100" step="1">
+      </label>
+      <label class="ctl">Gradient measured on
+        <select id="gdBatch">
+          <option value="all">All 40 animals (full batch)</option>
+          <option value="8">8 random animals (mini-batch)</option>
+          <option value="1">1 random animal (stochastic)</option>
+        </select>
+      </label>
+      <label class="ctl">Momentum
+        <select id="gdMom"><option value="0">Off</option><option value="0.9">0.9: keep 90% of the previous step</option></select>
+      </label>
+      <label class="ctl">Speed <output id="gdSpeedOut"></output>
+        <input type="range" id="gdSpeed" min="1" max="60" step="1">
+      </label>
+      <div class="btnrow"><button class="btn" id="gdNew">New data</button></div>
+      <p class="cap">Click anywhere on the landscape to start from there. <kbd>Space</kbd> runs or pauses.</p>
+    </section>
+
+    <section class="card" data-only="bp">
+      <div class="btnrow">
+        <button class="btn bpBack">◀ Back</button>
+        <button class="btn primary bpNext">Next ▶</button>
+      </div>
+      <div class="btnrow">
+        <button class="btn" id="bpSkip">Jump to update</button>
+        <button class="btn" id="bpTrain">Train 20 rounds</button>
+      </div>
+      <div class="stats" id="bpStats"></div>
+      <h3>The example animal</h3>
+      <div class="btnrow">
+        <button class="btn" data-ex="0.9,0.2,0">Cat</button>
+        <button class="btn" data-ex="0.2,0.85,1">Dog</button>
+        <button class="btn" data-ex="0.75,0.6,1">Pointy-eared dog</button>
+      </div>
+      <label class="ctl">Ears x₁ <output id="bpEarsOut"></output>
+        <input type="range" id="bpEars" min="0" max="1" step="0.05">
+      </label>
+      <label class="ctl">Snout x₂ <output id="bpSnoutOut"></output>
+        <input type="range" id="bpSnout" min="0" max="1" step="0.05">
+      </label>
+      <label class="ctl">True answer
+        <select id="bpY"><option value="0">Cat (y = 0)</option><option value="1">Dog (y = 1)</option></select>
+      </label>
+      <h3>Training</h3>
+      <label class="ctl">Learning rate η <output id="bpLrOut"></output>
+        <input type="range" id="bpLr" min="0.1" max="5" step="0.1">
+      </label>
+      <div class="btnrow"><button class="btn" id="bpRand">Random weights</button></div>
+      <p class="cap"><kbd>Space</kbd> = Next.</p>
+    </section>
+
+    <section class="card" data-only="2d img">
+      <div class="btnrow">
+        <button class="btn primary" id="play">▶ Train</button>
+        <button class="btn" id="stepB" title="One gradient-descent step on one mini-batch">Step batch</button>
+        <button class="btn" id="stepE" title="Run through every training example once">Step epoch</button>
+      </div>
+      <div class="btnrow">
+        <button class="btn" id="resetW" title="Throw away what was learned: new random weights">Reset weights</button>
+        <button class="btn" id="newData">New data</button>
+      </div>
+      <div class="stats" id="stats"></div>
+
+      <h3>Network</h3>
+      <label class="ctl">Hidden layers
+        <select id="hidden">
+          <option value="none">None (single layer, like a perceptron)</option>
+          <option value="2">1 layer · 2 neurons</option>
+          <option value="4">1 layer · 4 neurons</option>
+          <option value="8">1 layer · 8 neurons</option>
+          <option value="16">1 layer · 16 neurons</option>
+          <option value="32">1 layer · 32 neurons</option>
+          <option value="8-8">2 layers · 8, 8</option>
+          <option value="16-8">2 layers · 16, 8</option>
+          <option value="32-16">2 layers · 32, 16</option>
+        </select>
+      </label>
+      <label class="ctl">Activation function
+        <select id="act">
+          <option value="relu">ReLU · max(0, z)</option>
+          <option value="tanh">tanh</option>
+          <option value="sigmoid">sigmoid</option>
+        </select>
+      </label>
+
+      <h3>Training</h3>
+      <label class="ctl">Learning rate <output id="lrOut"></output>
+        <input type="range" id="lr" min="0" max="100" step="1">
+      </label>
+      <label class="ctl">Batch size
+        <select id="batch"><option>1</option><option>4</option><option>8</option><option>16</option><option>32</option><option>64</option></select>
+      </label>
+      <label class="ctl" title="Each step also shrinks every weight a little, so weights that don't help fade toward zero (regularization)">Weight decay <output id="decayOut"></output>
+        <select id="decay"><option value="0">0 (off)</option><option value="0.001">0.001</option><option value="0.01">0.01</option><option value="0.05">0.05</option></select>
+      </label>
+      <label class="ctl">Speed <output id="speedOut"></output>
+        <input type="range" id="speed" min="1" max="50" step="1">
+      </label>
+
+      <h3>Data</h3>
+      <label class="ctl" data-only="2d">Dataset
+        <select id="dataset">
+          <option value="easy">Easy: separable by a line</option>
+          <option value="overlap">Overlapping</option>
+          <option value="curved">Ring: needs a hidden layer</option>
+        </select>
+      </label>
+      <label class="ctl">Training examples <output id="nOut"></output>
+        <input type="range" id="nTrain">
+      </label>
+      <label class="ctl">Noise <output id="noiseOut"></output>
+        <input type="range" id="noise" min="0" max="100" step="5">
+      </label>
+      <p class="cap"><kbd>Space</kbd> starts or pauses training.</p>
+    </section>
+
+    <section class="card tips">
+      <h2>Things to try</h2>
+      <ol data-only="2d" style="margin-top:10px">
+        <li><b>One layer = one straight line.</b> With <i>Hidden layers: None</i> the network computes a weighted sum of the two features, so its cat/dog boundary is always a straight line, which is the perceptron idea. Train on <i>Easy</i>.</li>
+        <li><b>Where a line fails.</b> Switch to <i>Ring</i> and train with no hidden layer. Accuracy gets stuck. Now pick 4 hidden neurons. Each dashed line is one hidden neuron, and the output combines them into a curved boundary.</li>
+        <li><b>Gradient descent, one step at a time.</b> Hover a point, then press <i>Step batch</i> repeatedly. Watch the loss, the gradients and the weight nudges in <i>Under the hood</i>.</li>
+        <li><b>Learning rate.</b> Try 0.003, which is painfully slow, then 3, which is jumpy and can blow up.</li>
+        <li><b>Overfitting.</b> Use <i>Overlapping</i>, 20 examples, 32-16 hidden and <i>Show test points</i>. Training accuracy keeps climbing while test accuracy doesn't.</li>
+        <li><b>Click the plot</b> to add your own cats and dogs.</li>
+      </ol>
+      <ol data-only="pc" style="margin-top:10px">
+        <li><b>Start with AND.</b> Press <i>Next example</i> a few times. The perceptron looks at one example at a time and moves its line only when it gets one wrong.</li>
+        <li><b>Try OR and NAND.</b> It always gets there. Whenever some straight line can separate the 1s from the 0s, the perceptron learning rule is guaranteed to find one. This is the perceptron convergence theorem.</li>
+        <li><b>Now XOR.</b> Press Run. The line keeps swinging back and forth and the mistakes never reach 0, because no straight line can do this job.</li>
+        <li><b>A famous limitation.</b> This weakness of single-layer perceptrons was analysed in Minsky and Papert's 1969 book <i>Perceptrons</i>, and it dampened enthusiasm for neural networks for years.</li>
+        <li><b>The fix</b> is at the bottom of the page: a hidden layer. Compare the hand-built solution with one found by backpropagation.</li>
+        <li><b>Make your own problems</b> by clicking the dots. Of the 16 possible two-input problems, only XOR and its opposite (XNOR) are impossible for one perceptron.</li>
+      </ol>
+      <ol data-only="gd" style="margin-top:10px">
+        <li><b>A map of every possible model.</b> This model has just two knobs, w and b, so we can draw its loss for every setting. Real networks have millions of knobs, but the idea is the same.</li>
+        <li><b>Take 1 step.</b> The arrow points straight downhill: the negative gradient. Each step is learning rate × slope, so steps shrink as the ground flattens near the bottom.</li>
+        <li><b>Learning rate.</b> At 0.1 it crawls. Around 3 it's quick and smooth. Push it toward 50 and it overshoots, jumping across the valley.</li>
+        <li><b>Stochastic gradient descent.</b> Measure the gradient on 1 random animal. Each step is cheaper but noisier, so the path wobbles, yet it still heads downhill on average and never quite settles.</li>
+        <li><b>Momentum.</b> The ball keeps some speed from step to step, so it races along the long, gently sloping valley floor. It may also overshoot and circle back.</li>
+        <li><b>Watch the right-hand plot.</b> As the point walks downhill, the S-curve gets better at separating cats from dogs.</li>
+      </ol>
+      <ol data-only="bp" style="margin-top:10px">
+        <li><b>Step through one round</b> with Next ▶. The <span class="fw">forward pass</span> makes a prediction, the loss scores it, and the <span class="bw">backward pass</span> sends the blame back through the network, one layer at a time.</li>
+        <li><b>Spot the pattern.</b> Every weight's gradient is (error signal δ of the neuron it feeds) × (the value that came in on its wire). Backprop computes each δ once and reuses it for every weight feeding that neuron.</li>
+        <li><b>Check the "nudge" column.</b> Nudging each weight and re-measuring the loss gives the same numbers. Backprop gets all of them in one backward sweep instead of one extra forward pass per weight, which matters when there are billions of weights.</li>
+        <li><b>Right answers barely teach.</b> Train 20 rounds, then step through again. Once p is close to y, p − y is tiny and so is every gradient.</li>
+        <li><b>Vanishing gradients.</b> Press Random weights until a hidden neuron sits near 0 or 1. Its slope h(1−h) is almost 0, so almost no blame reaches the weights behind it.</li>
+      </ol>
+      <ol data-only="img" style="margin-top:10px">
+        <li><b>No hidden layer = template matching.</b> Set <i>Hidden layers: None</i> and train. The two weight images become a "cat template" and a "dog template". A picture is scored by how much it overlaps each one.</li>
+        <li><b>Hidden neurons learn features.</b> With 16 hidden neurons, look at the weight images. Some respond to pointy ears or whiskers and others to floppy side ears or a muzzle. Nobody programmed those in.</li>
+        <li><b>Draw your own</b> in the inspector. Triangles on top suggest a cat, and long ears hanging at the sides suggest a dog. Erase parts of a real picture to find which pixels matter.</li>
+        <li><b>Overfitting.</b> Use 50 training images, 60% noise and 32-16 hidden. Training accuracy reaches 100% while test accuracy lags behind.</li>
+        <li><b>Click any test picture</b> below to send it through the network.</li>
+      </ol>
+    </section>
+  </aside>
+
+  <div class="mainc">
+    <div class="row" data-only="pc">
+      <section class="card">
+        <div class="cardhead"><h2>Input space</h2>
+          <div class="legend">
+            <span><svg width="12" height="12"><circle cx="6" cy="6" r="5" fill="var(--text)"/></svg>target 1</span>
+            <span><svg width="12" height="12"><circle cx="6" cy="6" r="4.5" fill="none" stroke="var(--text)" stroke-width="1.5"/></svg>target 0</span>
+            <span><svg width="12" height="12"><rect width="12" height="12" rx="2" fill="color-mix(in srgb, var(--seq) 24%, var(--surface))" stroke="var(--border)"/></svg>perceptron says 1</span>
+            <span><svg width="12" height="12"><circle cx="6" cy="6" r="4.5" fill="none" stroke="var(--neg)" stroke-width="2"/></svg>wrong</span>
+          </div>
+        </div>
+        <canvas id="pcPlot" class="plot sq" aria-label="The four input combinations and the perceptron's dividing line"></canvas>
+        <p id="pcStatus" class="cap" style="font-size:13.5px"></p>
+      </section>
+      <section class="card">
+        <div class="cardhead"><h2>The perceptron</h2></div>
+        <canvas id="pcNet" aria-label="Perceptron diagram"></canvas>
+        <div id="pcMath" class="explain"></div>
+      </section>
+    </div>
+    <div class="row" data-only="pc">
+      <section class="card">
+        <div class="cardhead"><h2>Truth table</h2><span class="cap">highlighted row = next example</span></div>
+        <div class="tablewrap"><table class="grad" id="pcTable"></table></div>
+      </section>
+      <section class="card">
+        <div class="cardhead"><h2>Mistakes per pass through the 4 examples</h2></div>
+        <canvas id="pcChart" class="chart"></canvas>
+      </section>
+    </div>
+    <section class="card" data-only="pc">
+      <div class="cardhead"><h2>The fix for XOR: add a hidden layer</h2>
+        <div class="btnrow" style="margin:0">
+          <button class="btn" data-xmode="hand">Hand-built</button>
+          <button class="btn" data-xmode="learned">Learned by backprop</button>
+          <button class="btn" id="xorRetrain">Retrain</button>
+        </div>
+      </div>
+      <div class="row">
+        <div><h4 style="text-align:center">Input space (x₁, x₂)</h4><canvas id="xorIn" class="plot sq" aria-label="XOR inputs with the two hidden neurons' lines"></canvas></div>
+        <div><h4 style="text-align:center">Hidden space (h₁, h₂)</h4><canvas id="xorHid" class="plot sq" aria-label="The same four examples plotted at their hidden-neuron values"></canvas></div>
+      </div>
+      <div id="xorExplain" class="explain"></div>
+    </section>
+    <div class="row" data-only="gd">
+      <section class="card">
+        <div class="cardhead"><h2>The loss landscape</h2>
+          <div class="legend">
+            <span><svg width="44" height="10"><defs><linearGradient id="seqg"><stop offset="0" stop-color="var(--surface)"/><stop offset="1" stop-color="var(--seq)"/></linearGradient></defs><rect x=".5" y=".5" width="43" height="9" rx="2" fill="url(#seqg)" stroke="var(--border)"/></svg>low → high loss</span>
+            <span>✕ lowest point</span>
+            <span><svg width="12" height="12"><circle cx="6" cy="6" r="5" fill="var(--s2)"/></svg>current model</span>
+          </div>
+        </div>
+        <canvas id="gdLand" class="plot" aria-label="Contour map of the loss for every value of w and b, with the path gradient descent has taken"></canvas>
+        <p class="cap">The model is P(dog) = σ(w·snout + b). It has only two numbers, so every possible model is one point on this map. The shading shows its loss on 40 animals. Training means walking downhill to the lowest point.</p>
+      </section>
+      <section class="card">
+        <div class="cardhead"><h2>The current model as a curve</h2>
+          <div class="legend">
+            <span><svg width="12" height="12"><circle cx="6" cy="6" r="4.5" fill="var(--cat)"/></svg>Cat (y = 0)</span>
+            <span><svg width="12" height="12"><path d="M6 1.5 L11 10.5 L1 10.5Z" fill="var(--dog)"/></svg>Dog (y = 1)</span>
+          </div>
+        </div>
+        <canvas id="gdData" class="chart" aria-label="The model's predicted probability of dog against snout length"></canvas>
+        <div id="gdMath" class="mono" style="margin-top:10px"></div>
+      </section>
+    </div>
+    <section class="card" data-only="gd">
+      <div class="cardhead"><h2>Loss after each step</h2></div>
+      <canvas id="gdChart" class="chart"></canvas>
+    </section>
+
+    <div class="row wide-left" data-only="bp">
+      <section class="card">
+        <div class="cardhead"><h2>A tiny network: 2 inputs → 2 hidden → 1 output</h2>
+          <div class="legend">
+            <span><svg width="18" height="8"><line x1="0" y1="4" x2="18" y2="4" stroke="var(--s1)" stroke-width="3"/></svg>forward pass</span>
+            <span><svg width="18" height="8"><line x1="0" y1="4" x2="18" y2="4" stroke="var(--s2)" stroke-width="3"/></svg>backward pass</span>
+          </div>
+        </div>
+        <canvas id="bpNet" aria-label="A 2-2-1 network with every weight, value and gradient labelled"></canvas>
+      </section>
+      <section class="card">
+        <div class="cardhead"><h2 id="bpTitle"></h2><span class="cap" id="bpStepNo"></span></div>
+        <div id="bpExplain" class="explain"></div>
+        <div class="btnrow" style="margin-top:12px">
+          <button class="btn bpBack">◀ Back</button>
+          <button class="btn primary bpNext">Next ▶</button>
+        </div>
+      </section>
+    </div>
+    <section class="card" data-only="bp">
+      <div class="cardhead"><h2>Every weight's gradient</h2></div>
+      <div class="tablewrap"><table class="grad" id="bpTable"></table></div>
+      <p class="cap"><b>Nudge check:</b> move one weight up and down by 0.0001, rerun the forward pass, and see how much the loss changes. That is the gradient measured by brute force. It agrees with backprop, but brute force needs a separate forward pass for every weight, while backprop gets them all in one backward sweep.</p>
+    </section>
+    <section class="card" data-only="bp">
+      <div class="cardhead"><h2>Loss on this animal after each update</h2></div>
+      <canvas id="bpChart" class="chart"></canvas>
+    </section>
+
+    <div class="row" data-only="2d img">
+      <section class="card" data-only="2d">
+        <div class="cardhead">
+          <h2>Feature space</h2>
+          <div class="legend">
+            <span><svg width="12" height="12"><circle cx="6" cy="6" r="4.5" fill="var(--cat)"/></svg>Cat</span>
+            <span><svg width="12" height="12"><path d="M6 1.5 L11 10.5 L1 10.5Z" fill="var(--dog)"/></svg>Dog</span>
+            <span>Shading = what the network predicts</span>
+          </div>
+        </div>
+        <canvas id="plot2d" class="plot" aria-label="Scatter of cats and dogs by ear pointiness and snout length with the network's prediction as background shading"></canvas>
+        <div class="opts" style="margin-top:8px">
+          <span>Click adds:</span>
+          <label><input type="radio" name="addcls" value="0" checked> cat</label>
+          <label><input type="radio" name="addcls" value="1"> dog</label>
+          <span style="width:8px"></span>
+          <label><input type="checkbox" id="showLines" checked> hidden-neuron lines</label>
+          <label><input type="checkbox" id="showTest"> show test points (hollow)</label>
+        </div>
+      </section>
+
+      <section class="card" data-only="img">
+        <div class="cardhead"><h2>Inspector: draw or pick a picture</h2></div>
+        <div class="inspector">
+          <canvas id="pad" aria-label="20 by 20 drawing pad"></canvas>
+          <div class="probs">
+            <div class="prob"><span>Cat</span><div class="bar"><i id="barCat" style="background:var(--cat)"></i></div><b id="pCat"></b></div>
+            <div class="prob"><span>Dog</span><div class="bar"><i id="barDog" style="background:var(--dog)"></i></div><b id="pDog"></b></div>
+            <div id="verdict"></div>
+            <div class="btnrow">
+              <button class="btn" id="rndCat">Random cat</button>
+              <button class="btn" id="rndDog">Random dog</button>
+              <button class="btn" id="clearPad">Clear</button>
+              <button class="btn" id="eraser">Eraser</button>
+            </div>
+            <p class="cap">Drag on the pad to draw. Right-click drag (or Eraser) to erase. Everything updates live.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="cardhead">
+          <h2>The network</h2>
+          <div class="legend">
+            <span><svg width="18" height="8"><line x1="0" y1="4" x2="18" y2="4" stroke="var(--pos)" stroke-width="3"/></svg>positive weight</span>
+            <span><svg width="18" height="8"><line x1="0" y1="4" x2="18" y2="4" stroke="var(--neg)" stroke-width="3"/></svg>negative weight</span>
+          </div>
+        </div>
+        <canvas id="net" aria-label="Diagram of the network's neurons and weights"></canvas>
+        <p class="cap">Line thickness shows how big a weight is. Node colour shows that neuron's activation for the current example. Hover a neuron for its numbers.</p>
+      </section>
+    </div>
+
+    <section class="card" data-only="2d img">
+      <div class="cardhead"><h2>Under the hood: one example, step by step</h2></div>
+      <div id="hood" class="mono"></div>
+    </section>
+
+    <div class="row" data-only="2d img">
+      <section class="card">
+        <div class="cardhead"><h2>Loss (lower is better)</h2>
+          <div class="legend"><span><svg width="18" height="8"><line x1="0" y1="4" x2="18" y2="4" stroke="var(--s1)" stroke-width="2"/></svg>Train</span><span><svg width="18" height="8"><line x1="0" y1="4" x2="18" y2="4" stroke="var(--s2)" stroke-width="2" stroke-dasharray="4 3"/></svg>Test</span></div>
+        </div>
+        <canvas id="lossChart" class="chart"></canvas>
+      </section>
+      <section class="card">
+        <div class="cardhead"><h2>Accuracy</h2>
+          <div class="legend"><span><svg width="18" height="8"><line x1="0" y1="4" x2="18" y2="4" stroke="var(--s1)" stroke-width="2"/></svg>Train</span><span><svg width="18" height="8"><line x1="0" y1="4" x2="18" y2="4" stroke="var(--s2)" stroke-width="2" stroke-dasharray="4 3"/></svg>Test</span></div>
+        </div>
+        <canvas id="accChart" class="chart"></canvas>
+      </section>
+    </div>
+
+    <section class="card" data-only="img">
+      <div class="cardhead"><h2 id="tilesTitle">What each hidden neuron looks for</h2>
+        <div class="legend">
+          <span><svg width="12" height="12"><rect width="12" height="12" rx="2" fill="var(--pos)"/></svg>pixel pushes the neuron up</span>
+          <span><svg width="12" height="12"><rect width="12" height="12" rx="2" fill="var(--neg)"/></svg>pixel pushes it down</span>
+        </div>
+      </div>
+      <div id="tiles" class="tiles"></div>
+      <p class="cap">Each tile shows one neuron's 400 incoming weights laid out as a 20×20 image. <i>a</i> is that neuron's activation for the picture in the inspector. Tiles start as random static. Weight decay makes the pixels that never matter fade, so the learned shapes stand out. Set it to 0 to compare. A tile that stays static with a=0.00 for every picture is a "dead" ReLU neuron. It never switches on, so it never learns. Try tanh to see the difference.</p>
+    </section>
+
+    <section class="card" data-only="img">
+      <div class="cardhead"><h2>Test pictures (never used for training)</h2><span class="cap" id="galleryNote"></span></div>
+      <div id="gallery" class="gallery"></div>
+    </section>
+  </div>
+</main>
+<div id="tip"></div>
+
+<script>
+"use strict";
+// ---------------------------------------------------------------- utilities
+const $ = s => document.querySelector(s);
+const rand = (a, b) => a + Math.random() * (b - a);
+function randn(){ let u = 0; while (!u) u = Math.random(); return Math.sqrt(-2*Math.log(u)) * Math.cos(2*Math.PI*Math.random()); }
+const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
+function shuffle(a){ for (let i = a.length-1; i > 0; i--){ const j = Math.random()*(i+1)|0; [a[i],a[j]] = [a[j],a[i]]; } return a; }
+const argmax = p => p[1] > p[0] ? 1 : 0;
+const fmt = (v, d=2) => (v < 0 ? '−' : '') + Math.abs(v).toFixed(d);
+const fmtP = (v, d=2) => v < 0 ? '(' + fmt(v, d) + ')' : fmt(v, d);
+const NAMES = ['Cat', 'Dog'];
+const S = 20, NPIX = S*S;
+
+let T = {};
+const hexRgb = h => [1,3,5].map(i => parseInt(h.slice(i, i+2), 16));
+function readTokens(){
+  const cs = getComputedStyle(document.documentElement);
+  T = { rgb:{} };
+  for (const k of ['surface','surface-2','border','text','text-2','muted','cat','dog','pos','neg','s1','s2','seq']){
+    T[k] = cs.getPropertyValue('--'+k).trim(); T.rgb[k] = hexRgb(T[k]);
+  }
+}
+const mixa = (a, b, t) => a.map((v, i) => Math.round(v + (b[i]-v)*t));
+const mixc = (a, b, t) => 'rgb(' + mixa(a, b, t).join(',') + ')';
+
+function fit(c){
+  const r = c.getBoundingClientRect(), d = window.devicePixelRatio || 1;
+  const w = Math.max(1, Math.round(r.width*d)), h = Math.max(1, Math.round(r.height*d));
+  if (c.width !== w || c.height !== h){ c.width = w; c.height = h; }
+  const x = c.getContext('2d'); x.setTransform(d, 0, 0, d, 0, 0);
+  return { x, w: r.width, h: r.height };
+}
+
+const tip = $('#tip');
+function showTip(ev, html){
+  tip.innerHTML = html; tip.style.display = 'block';
+  const r = tip.getBoundingClientRect();
+  let x = ev.clientX + 14, y = ev.clientY + 14;
+  if (x + r.width > innerWidth - 8) x = ev.clientX - r.width - 14;
+  if (y + r.height > innerHeight - 8) y = ev.clientY - r.height - 14;
+  tip.style.left = x + 'px'; tip.style.top = y + 'px';
+}
+const hideTip = () => { tip.style.display = 'none'; };
+
+// ---------------------------------------------------------------- the neural network
+const ACT = {
+  relu:    { f: z => z > 0 ? z : 0,            d: a => a > 0 ? 1 : 0, name: 'ReLU' },
+  tanh:    { f: Math.tanh,                     d: a => 1 - a*a,       name: 'tanh' },
+  sigmoid: { f: z => 1 / (1 + Math.exp(-z)),   d: a => a * (1 - a),   name: 'sigmoid' },
+};
+
+// A plain multi-layer perceptron: hidden layers use `act`, the output is softmax over [cat, dog],
+// trained with cross-entropy loss and mini-batch gradient descent.
+class MLP {
+  constructor(sizes, act){
+    this.sizes = sizes; this.act = act; this.L = sizes.length - 1;
+    this.W = []; this.b = [];
+    for (let l = 0; l < this.L; l++){
+      const nin = sizes[l], nout = sizes[l+1];
+      let std = (act === 'relu' && l < this.L-1) ? Math.sqrt(2/nin) : Math.sqrt(1/nin);
+      if (nin >= 100) std *= 0.15; // pixel layer: start quiet so the weight images show what was *learned*
+      const W = new Float32Array(nin*nout);
+      for (let i = 0; i < W.length; i++) W[i] = randn() * std;
+      this.W.push(W); this.b.push(new Float32Array(nout));
+    }
+    this.gW = this.W.map(w => new Float32Array(w.length));
+    this.gb = this.b.map(b => new Float32Array(b.length));
+    this.z = sizes.map(n => new Float32Array(n));   // weighted sums
+    this.a = sizes.map(n => new Float32Array(n));   // activations
+    this.d = sizes.map(n => new Float32Array(n));   // dLoss/dz
+  }
+  forward(x){
+    const { a, z } = this, f = ACT[this.act].f;
+    a[0].set(x);
+    for (let l = 0; l < this.L; l++){
+      const nin = this.sizes[l], nout = this.sizes[l+1], W = this.W[l], b = this.b[l], ai = a[l], zo = z[l+1], ao = a[l+1];
+      for (let j = 0; j < nout; j++){
+        let s = b[j]; const o = j*nin;
+        for (let i = 0; i < nin; i++) s += W[o+i] * ai[i];
+        zo[j] = s;
+      }
+      if (l < this.L-1){ for (let j = 0; j < nout; j++) ao[j] = f(zo[j]); }
+      else { // softmax
+        let m = -Infinity; for (let j = 0; j < nout; j++) m = Math.max(m, zo[j]);
+        let s = 0; for (let j = 0; j < nout; j++){ ao[j] = Math.exp(zo[j]-m); s += ao[j]; }
+        for (let j = 0; j < nout; j++) ao[j] /= s;
+      }
+    }
+    return a[this.L];
+  }
+  // Backpropagation. Call right after forward(x). Returns the loss; adds gradients to gW/gb if accumulate.
+  backward(y, accumulate = true){
+    const { a, d, L } = this, out = a[L], df = ACT[this.act].d;
+    const loss = -Math.log(Math.max(out[y], 1e-12));
+    for (let j = 0; j < out.length; j++) d[L][j] = out[j] - (j === y ? 1 : 0);
+    for (let l = L-1; l >= 0; l--){
+      const nin = this.sizes[l], nout = this.sizes[l+1], W = this.W[l], ai = a[l], dout = d[l+1];
+      if (accumulate){
+        const gW = this.gW[l], gb = this.gb[l];
+        for (let j = 0; j < nout; j++){
+          const dj = dout[j]; gb[j] += dj; if (dj === 0) continue;
+          const o = j*nin; for (let i = 0; i < nin; i++) gW[o+i] += dj * ai[i];
+        }
+      }
+      if (l > 0){
+        const din = d[l];
+        for (let i = 0; i < nin; i++){
+          let s = 0; for (let j = 0; j < nout; j++) s += W[j*nin+i] * dout[j];
+          din[i] = s * df(ai[i]);
+        }
+      }
+    }
+    return loss;
+  }
+  apply(lr, n, decay = 0){
+    const k = lr / n, shrink = 1 - lr * decay; // weight decay pulls unused weights toward 0
+    for (let l = 0; l < this.L; l++){
+      const W = this.W[l], gW = this.gW[l], b = this.b[l], gb = this.gb[l];
+      for (let i = 0; i < W.length; i++){ W[i] = W[i] * shrink - k * gW[i]; gW[i] = 0; }
+      for (let j = 0; j < b.length; j++){ b[j] -= k * gb[j]; gb[j] = 0; }
+    }
+  }
+}
+
+// ---------------------------------------------------------------- data: two features
+function gen2d(ds, noise, n){
+  const sd = 0.03 + 0.17*noise, pts = [];
+  for (let i = 0; i < n; i++){
+    const y = i % 2; let e, s;
+    if (ds === 'curved'){
+      if (y === 0){ e = 0.5 + randn()*sd*0.8; s = 0.5 + randn()*sd*0.8; }
+      else { const th = Math.random()*Math.PI*2, r = 0.33 + randn()*sd*0.6; e = 0.5 + Math.cos(th)*r; s = 0.5 + Math.sin(th)*r; }
+    } else {
+      const [ce, cs] = ds === 'easy' ? (y ? [0.3, 0.7] : [0.72, 0.3]) : (y ? [0.42, 0.6] : [0.6, 0.42]);
+      e = ce + randn()*sd; s = cs + randn()*sd;
+    }
+    e = clamp(e, 0.01, 0.99); s = clamp(s, 0.01, 0.99);
+    pts.push({ x: Float32Array.of((e-0.5)*2, (s-0.5)*2), y });
+  }
+  return pts;
+}
+
+// ---------------------------------------------------------------- data: 20x20 pictures
+const big = document.createElement('canvas'); big.width = big.height = 80;
+const bctx = big.getContext('2d', { willReadFrequently: true });
+function drawCat(c, r){
+  c.fillStyle = '#fff'; c.strokeStyle = '#fff';
+  const pt = (deg, d) => [Math.cos(deg*Math.PI/180)*d, Math.sin(deg*Math.PI/180)*d];
+  for (const s of [-1, 1]){ // pointy ears
+    const eh = r*rand(0.7, 1.05);
+    c.beginPath(); c.moveTo(...pt(-90 + s*12, r*0.9)); c.lineTo(...pt(-90 + s*(42 + rand(-6, 6)), r + eh)); c.lineTo(...pt(-90 + s*72, r*0.9)); c.closePath(); c.fill();
+  }
+  c.beginPath(); c.arc(0, 0, r, 0, Math.PI*2); c.fill();
+  c.lineWidth = 3.5; c.lineCap = 'round'; // whiskers
+  for (const s of [-1, 1]) for (let i = -1; i <= 1; i++){
+    c.beginPath(); c.moveTo(s*r*0.55, r*0.3 + i*r*0.12); c.lineTo(s*r*rand(1.45, 1.75), r*0.3 + i*r*0.34 + rand(-2, 2)); c.stroke();
+  }
+  c.fillStyle = '#000';
+  for (const s of [-1, 1]){ c.beginPath(); c.ellipse(s*r*0.38, -r*0.12, r*0.1, r*0.18, 0, 0, Math.PI*2); c.fill(); }
+  c.beginPath(); c.moveTo(-r*0.13, r*0.14); c.lineTo(r*0.13, r*0.14); c.lineTo(0, r*0.32); c.closePath(); c.fill();
+}
+function drawDog(c, r){
+  const tilt = rand(0.1, 0.4), el = r*rand(0.65, 0.9);
+  c.fillStyle = '#fff';
+  for (const s of [-1, 1]){ c.beginPath(); c.ellipse(s*r*0.95, r*0.2, r*0.3, el, -s*tilt, 0, Math.PI*2); c.fill(); } // floppy ears
+  c.fillStyle = '#000'; c.beginPath(); c.ellipse(0, 0, r*0.86+3, r+3, 0, 0, Math.PI*2); c.fill();
+  c.fillStyle = '#fff'; c.beginPath(); c.ellipse(0, 0, r*0.86, r, 0, 0, Math.PI*2); c.fill();
+  const my = r*rand(0.5, 0.68); // muzzle
+  c.fillStyle = '#000'; c.beginPath(); c.ellipse(0, my, r*0.5+3, r*0.38+3, 0, 0, Math.PI*2); c.fill();
+  c.fillStyle = '#fff'; c.beginPath(); c.ellipse(0, my, r*0.5, r*0.38, 0, 0, Math.PI*2); c.fill();
+  c.fillStyle = '#000';
+  c.beginPath(); c.ellipse(0, my - r*0.14, r*0.21, r*0.14, 0, 0, Math.PI*2); c.fill();
+  for (const s of [-1, 1]){ c.beginPath(); c.arc(s*r*0.35, -r*0.22, r*0.12, 0, Math.PI*2); c.fill(); }
+}
+function genImage(label, noise){
+  const R = 80;
+  bctx.setTransform(1, 0, 0, 1, 0, 0); bctx.fillStyle = '#000'; bctx.fillRect(0, 0, R, R);
+  bctx.translate(40 + rand(-6, 6), 43 + rand(-5, 5)); bctx.rotate(rand(-0.3, 0.3));
+  const r = rand(15, 19.5);
+  if (label === 0) drawCat(bctx, r); else drawDog(bctx, r);
+  bctx.setTransform(1, 0, 0, 1, 0, 0);
+  const d = bctx.getImageData(0, 0, R, R).data, out = new Float32Array(NPIX), bright = rand(0.7, 1);
+  for (let y = 0; y < S; y++) for (let x = 0; x < S; x++){
+    let s = 0;
+    for (let dy = 0; dy < 4; dy++) for (let dx = 0; dx < 4; dx++) s += d[((y*4+dy)*R + x*4+dx)*4];
+    out[y*S+x] = clamp(s/(16*255)*bright + randn()*noise*0.5, 0, 1);
+  }
+  return out;
+}
+
+// ---------------------------------------------------------------- labs (one per tab)
+const labs = {
+  '2d': { kind:'2d',  nIn:2,    cfg:{ dataset:'easy', nTrain:200, noise:0.35, hidden:'none', act:'tanh', lr:0.3,  batch:8,  speed:2, decay:0 } },
+  img:  { kind:'img', nIn:NPIX, cfg:{ nTrain:300, noise:0.15, hidden:'16', act:'relu', lr:0.03, batch:16, speed:4, decay:0.05 } },
+};
+let tab = '2d', running = false, dirty = true;
+const cur = () => labs[tab];
+const hiddenSizes = h => h === 'none' ? [] : h.split('-').map(Number);
+
+function newData(lab){
+  const c = lab.cfg;
+  if (lab.kind === '2d'){ lab.train = gen2d(c.dataset, c.noise, c.nTrain); lab.test = gen2d(c.dataset, c.noise, 100); }
+  else {
+    lab.train = []; lab.test = [];
+    for (let i = 0; i < c.nTrain; i++) lab.train.push({ x: genImage(i%2, c.noise), y: i%2 });
+    for (let i = 0; i < 120; i++) lab.test.push({ x: genImage(i%2, c.noise), y: i%2 });
+    lab.galleryBuilt = false;
+  }
+  lab.probe = { x: Float32Array.from(lab.train[0].x), y: lab.train[0].y };
+}
+function evaluate(lab, epoch){
+  const net = lab.net;
+  const ev = set => { let loss = 0, c = 0; const preds = [];
+    for (const s of set){ const p = net.forward(s.x); loss -= Math.log(Math.max(p[s.y], 1e-12)); c += argmax(p) === s.y; preds.push(p[1]); }
+    return { loss: loss/set.length, acc: c/set.length, preds }; };
+  const te = ev(lab.test), tr = ev(lab.train);
+  lab.testPreds = te.preds;
+  return { epoch, trainLoss: tr.loss, trainAcc: tr.acc, testLoss: te.loss, testAcc: te.acc };
+}
+function resetNet(lab){
+  const c = lab.cfg;
+  lab.net = new MLP([lab.nIn, ...hiddenSizes(c.hidden), 2], c.act);
+  lab.epoch = 0; lab.steps = 0; lab.pos = 0; lab.diverged = false; lab.lastLoss = null;
+  lab.order = shuffle([...lab.train.keys()]);
+  lab.hist = [evaluate(lab, 0)];
+}
+function trainBatch(lab){
+  const net = lab.net, B = lab.cfg.batch; let n = 0, loss = 0;
+  while (n < B && lab.pos < lab.order.length){
+    const s = lab.train[lab.order[lab.pos++]];
+    net.forward(s.x); loss += net.backward(s.y); n++;
+  }
+  if (n) net.apply(lab.cfg.lr, n, lab.cfg.decay);
+  lab.steps++; lab.lastLoss = loss / Math.max(n, 1);
+  if (lab.pos >= lab.order.length){
+    lab.epoch++; lab.hist.push(evaluate(lab, lab.epoch));
+    lab.pos = 0; lab.order = shuffle([...lab.train.keys()]);
+  }
+  if (!isFinite(lab.lastLoss) || net.W.some(W => !isFinite(W[0]))){ lab.diverged = true; setRunning(false); }
+}
+
+// ---------------------------------------------------------------- naming helpers
+function neuronName(lab, l, i){
+  const L = lab.net.L;
+  if (l === 0) return lab.kind === '2d' ? ['ears', 'snout'][i] : 'pixel (' + (i % S) + ',' + (i / S | 0) + ')';
+  if (l === L) return NAMES[i];
+  return 'hgk'[l-1] + (i+1);
+}
+
+// ---------------------------------------------------------------- rendering: feature space
+const P2 = { l:44, r:12, t:12, b:38 };
+function clipLine(a, b, c){ // a*X + b*Y + c = 0 within [-1,1]^2
+  const pts = [];
+  if (Math.abs(b) > 1e-9) for (const X of [-1, 1]){ const Y = -(a*X + c)/b; if (Y >= -1 && Y <= 1) pts.push([X, Y]); }
+  if (Math.abs(a) > 1e-9) for (const Y of [-1, 1]){ const X = -(b*Y + c)/a; if (X >= -1 && X <= 1) pts.push([X, Y]); }
+  return pts.length >= 2 ? [pts[0], pts[pts.length-1]] : null;
+}
+function render2d(lab){
+  const { x: g, w, h } = fit($('#plot2d'));
+  g.clearRect(0, 0, w, h);
+  const pw = w - P2.l - P2.r, ph = h - P2.t - P2.b;
+  const px = (X, Y) => [P2.l + (X/2+0.5)*pw, P2.t + (1-(Y/2+0.5))*ph];
+  const net = lab.net, R = 64, cw = pw/R, ch = ph/R, inp = new Float32Array(2);
+  for (let i = 0; i < R; i++) for (let j = 0; j < R; j++){
+    inp[0] = ((i+0.5)/R - 0.5)*2; inp[1] = (0.5 - (j+0.5)/R)*2;
+    const p = net.forward(inp)[1], t = Math.abs(p-0.5)*2;
+    g.fillStyle = mixc(T.rgb.surface, p > 0.5 ? T.rgb.dog : T.rgb.cat, 0.1 + 0.32*t);
+    g.fillRect(P2.l + i*cw, P2.t + j*ch, cw + 0.7, ch + 0.7);
+  }
+  // axes
+  g.strokeStyle = T.border; g.lineWidth = 1; g.strokeRect(P2.l+.5, P2.t+.5, pw, ph);
+  g.fillStyle = T.muted; g.font = '11px system-ui'; g.textAlign = 'center'; g.textBaseline = 'top';
+  for (const v of [0, 0.5, 1]){ g.fillText(v, P2.l + v*pw, P2.t + ph + 5); }
+  g.fillStyle = T['text-2']; g.font = '12px system-ui';
+  g.fillText('Ear pointiness →', P2.l + pw/2, P2.t + ph + 20);
+  g.textAlign = 'right'; g.textBaseline = 'middle'; g.fillStyle = T.muted; g.font = '11px system-ui';
+  for (const v of [0, 0.5, 1]) g.fillText(v, P2.l - 6, P2.t + (1-v)*ph);
+  g.save(); g.translate(14, P2.t + ph/2); g.rotate(-Math.PI/2); g.textAlign = 'center'; g.fillStyle = T['text-2']; g.font = '12px system-ui'; g.fillText('Snout length →', 0, 0); g.restore();
+
+  // each first-layer neuron's line z = 0
+  if ($('#showLines').checked){
+    const W = net.W[0], b = net.b[0], lines = [];
+    if (net.L === 1) lines.push({ a: W[2]-W[0], b: W[3]-W[1], c: b[1]-b[0], name: 'decision line' });
+    else for (let j = 0; j < net.sizes[1]; j++) lines.push({ a: W[j*2], b: W[j*2+1], c: b[j], name: 'h' + (j+1) });
+    g.save(); g.beginPath(); g.rect(P2.l, P2.t, pw, ph); g.clip();
+    for (const ln of lines){
+      const seg = clipLine(ln.a, ln.b, ln.c); if (!seg) continue;
+      const [p1, p2] = seg.map(([X, Y]) => px(X, Y));
+      g.strokeStyle = T['text-2']; g.lineWidth = 1.5; g.setLineDash([5, 4]);
+      g.beginPath(); g.moveTo(...p1); g.lineTo(...p2); g.stroke(); g.setLineDash([]);
+      // tick toward positive side
+      const mx = (p1[0]+p2[0])/2, my = (p1[1]+p2[1])/2, nl = Math.hypot(ln.a, ln.b) || 1, nx = ln.a/nl, ny = -ln.b/nl;
+      g.lineWidth = 2; g.beginPath(); g.moveTo(mx, my); g.lineTo(mx + nx*12, my + ny*12); g.stroke();
+      g.fillStyle = T.text; g.font = '600 11px system-ui'; g.textAlign = 'center'; g.textBaseline = 'middle';
+      g.fillText(ln.name, mx + nx*22, my + ny*22);
+    }
+    g.restore();
+  }
+  // points
+  const mark = (p, filled) => {
+    const [x, y] = px(p.x[0], p.x[1]), col = p.y ? T.dog : T.cat;
+    g.beginPath();
+    if (p.y === 0) g.arc(x, y, 4.5, 0, Math.PI*2); else { g.moveTo(x, y-6); g.lineTo(x+5.5, y+4); g.lineTo(x-5.5, y+4); g.closePath(); }
+    if (filled){ g.fillStyle = col; g.fill(); g.strokeStyle = T.surface; g.lineWidth = 1.5; g.stroke(); }
+    else { g.strokeStyle = col; g.lineWidth = 2; g.stroke(); }
+  };
+  if ($('#showTest').checked) for (const p of lab.test) mark(p, false);
+  for (const p of lab.train) mark(p, true);
+  // probe
+  const [qx, qy] = px(lab.probe.x[0], lab.probe.x[1]);
+  g.strokeStyle = T.text; g.lineWidth = 2; g.beginPath(); g.arc(qx, qy, 9, 0, Math.PI*2); g.stroke();
+}
+
+// ---------------------------------------------------------------- rendering: network diagram
+const tiny = document.createElement('canvas'); tiny.width = tiny.height = S;
+const tctx = tiny.getContext('2d'), tImg = tctx.createImageData(S, S);
+function drawGray(g, arr, x, y, size){
+  for (let i = 0; i < NPIX; i++){ const v = Math.round(clamp(arr[i], 0, 1)*255); tImg.data[i*4] = tImg.data[i*4+1] = tImg.data[i*4+2] = v; tImg.data[i*4+3] = 255; }
+  tctx.putImageData(tImg, 0, 0); g.imageSmoothingEnabled = false; g.drawImage(tiny, x, y, size, size);
+}
+function renderNet(lab){
+  const { x: g, w, h } = fit($('#net'));
+  g.clearRect(0, 0, w, h);
+  const net = lab.net, sizes = net.sizes, L = net.L, img = lab.kind === 'img';
+  net.forward(lab.probe.x);
+  const top = 14, bottom = 30, left = img ? 8 : 96, right = 92;
+  const thumb = img ? Math.min(100, h - top - bottom, w*0.22) : 0;
+  const first = img ? 1 : 0, k = L - first + 1;
+  const start = img ? left + thumb + 60 : left, end = w - right;
+  const colX = []; for (let l = 0; l <= L; l++) colX[l] = l < first ? left + thumb : (k === 1 ? end : start + (end - start)*(l - first)/(k - 1));
+  const pos = [];
+  for (let l = 0; l <= L; l++){
+    const n = sizes[l]; if (l < first){ pos.push(null); continue; }
+    const sp = Math.min(46, (h - top - bottom)/n), r = Math.max(2.5, Math.min(14, sp*0.38));
+    const y0 = top + (h - top - bottom - sp*n)/2 + sp/2;
+    pos.push({ x: colX[l], r, ys: Array.from({ length: n }, (_, i) => y0 + i*sp) });
+  }
+  const cy = top + (h - top - bottom)/2;
+  // edges
+  if (img){
+    g.strokeStyle = T.muted; g.globalAlpha = 0.3; g.lineWidth = 1;
+    for (const y of pos[1].ys){ g.beginPath(); g.moveTo(left + thumb, cy); g.lineTo(pos[1].x, y); g.stroke(); }
+    g.globalAlpha = 1;
+  }
+  for (let l = first; l < L; l++){
+    const W = net.W[l], nin = sizes[l], nout = sizes[l+1]; let m = 1e-6;
+    for (const v of W) m = Math.max(m, Math.abs(v));
+    for (let j = 0; j < nout; j++) for (let i = 0; i < nin; i++){
+      const v = W[j*nin+i], t = Math.abs(v)/m;
+      g.strokeStyle = v > 0 ? T.pos : T.neg; g.globalAlpha = 0.1 + 0.75*t; g.lineWidth = 0.4 + 3*t;
+      g.beginPath(); g.moveTo(pos[l].x, pos[l].ys[i]); g.lineTo(pos[l+1].x, pos[l+1].ys[j]); g.stroke();
+    }
+  }
+  g.globalAlpha = 1;
+  if (img){ drawGray(g, lab.probe.x, left, cy - thumb/2, thumb); g.strokeStyle = T.border; g.strokeRect(left+.5, cy - thumb/2 + .5, thumb, thumb); }
+  // nodes
+  const hits = []; g.font = '12px system-ui'; g.textBaseline = 'middle';
+  for (let l = first; l <= L; l++){
+    const P = pos[l], a = net.a[l];
+    let scale = 1;
+    if (l > 0 && l < L && net.act === 'relu'){ for (const v of a) scale = Math.max(scale, v); }
+    P.ys.forEach((y, i) => {
+      let fill;
+      if (l === L) fill = mixc(T.rgb['surface-2'], i ? T.rgb.dog : T.rgb.cat, a[i]);
+      else { const v = clamp(a[i]/scale, -1, 1); fill = mixc(T.rgb['surface-2'], v >= 0 ? T.rgb.pos : T.rgb.neg, Math.abs(v)); }
+      g.beginPath(); g.arc(P.x, y, P.r, 0, Math.PI*2); g.fillStyle = fill; g.fill();
+      g.strokeStyle = T.muted; g.lineWidth = 1; g.stroke();
+      hits.push({ x: P.x, y, r: P.r, l, j: i });
+      if (l === 0){ g.fillStyle = T['text-2']; g.textAlign = 'right'; g.fillText(neuronName(lab, 0, i) + ' ' + (a[i]/2 + 0.5).toFixed(2), P.x - P.r - 6, y); }
+      if (l === L){ g.fillStyle = T.text; g.textAlign = 'left'; g.font = '600 12px system-ui'; g.fillText(NAMES[i] + ' ' + (a[i]*100).toFixed(0) + '%', P.x + P.r + 8, y); g.font = '12px system-ui'; }
+    });
+  }
+  lab.netHits = hits;
+  // captions
+  g.fillStyle = T.muted; g.font = '11px system-ui'; g.textAlign = 'center'; g.textBaseline = 'alphabetic';
+  const capY = h - 8;
+  if (img) g.fillText('Input: 400 pixels', left + thumb/2, capY);
+  for (let l = first; l <= L; l++){
+    const txt = l === 0 ? 'Input' : l === L ? 'Output (softmax)' : `Hidden ${l} (${ACT[net.act].name})`;
+    g.textAlign = l === L ? 'right' : l === 0 && !img ? 'left' : 'center';
+    g.fillText(txt, l === L ? w - 4 : l === 0 ? 4 : colX[l], capY);
+  }
+}
+
+// ---------------------------------------------------------------- rendering: under the hood
+function renderHood(lab){
+  const net = lab.net, L = net.L, S_ = net.sizes, y = lab.probe.y, x = lab.probe.x, act = ACT[net.act].name;
+  net.forward(x);
+  const hasY = y != null; let loss = 0;
+  if (hasY) loss = net.backward(y, false);
+  const nm = (l, i) => neuronName(lab, l, i);
+  const fwd = [], back = [];
+  fwd.push('<h4>1 · Forward pass: compute a prediction</h4>');
+  if (lab.kind === '2d') fwd.push(`Input: ears = ${(x[0]/2+.5).toFixed(2)}, snout = ${(x[1]/2+.5).toFixed(2)}  (centred to −1…1: <span class="hl">x = [${fmt(x[0])}, ${fmt(x[1])}]</span>)`);
+  else fwd.push('Input: 400 pixel brightnesses, 0 = black, 1 = white');
+  for (let l = 1; l <= L; l++){
+    const nin = S_[l-1], nout = S_[l], W = net.W[l-1], b = net.b[l-1], prev = net.a[l-1];
+    fwd.push(`<div style="margin-top:4px">${l === L ? 'Output layer: softmax turns scores into probabilities' : `Hidden layer ${l}: ${act}`}</div>`);
+    const show = Math.min(nout, 6);
+    for (let j = 0; j < show; j++){
+      let expr;
+      if (nin <= 4){
+        const terms = []; for (let i = 0; i < nin; i++) terms.push(`${fmtP(W[j*nin+i])}·${fmtP(prev[i])}`);
+        expr = terms.join(' + ') + ' + ' + fmtP(b[j]);
+      } else expr = `Σ (${nin} weights × inputs) + bias`;
+      const tail = l === L ? `→ p = ${(net.a[l][j]*100).toFixed(1)}%` : `→ ${act}(z) = ${fmt(net.a[l][j])}`;
+      fwd.push(`&nbsp;&nbsp;<span class="hl">${nm(l, j)}</span>: z = ${expr} = <span class="hl">${fmt(net.z[l][j])}</span> ${tail}`);
+    }
+    if (nout > show) fwd.push(`&nbsp;&nbsp;… and ${nout - show} more neurons`);
+  }
+  back.push('<h4>2 · Loss: how wrong was it?</h4>');
+  if (!hasY){
+    back.push(lab.kind === '2d' ? 'Hover over a training point (it has a true label) to see its loss and gradients.' : 'This picture has no label (you drew on it). Pick a random cat or dog, or a test picture, to see its loss and gradients.');
+  } else {
+    const p = net.a[L][y];
+    back.push(`True answer: <span class="hl">${NAMES[y]}</span>. Loss = −ln p(${NAMES[y]}) = −ln ${p.toFixed(3)} = <span class="hl">${loss.toFixed(3)}</span>`);
+    back.push(`(0 = confident and right; ${(-Math.log(0.5)).toFixed(2)} = a coin flip; big = confident and wrong)`);
+    back.push('<h4>3 · Backpropagation: who is to blame?</h4>');
+    back.push(`Output: ∂L/∂z = p − target → ${NAMES.map((n, j) => `${n} <span class="hl">${fmt(net.d[L][j], 3)}</span>`).join(', ')}`);
+    for (let l = L-1; l >= 1; l--){
+      const n = S_[l], show = Math.min(n, 8), parts = [];
+      for (let i = 0; i < show; i++) parts.push(`${nm(l, i)} <span class="hl">${fmt(net.d[l][i], 3)}</span>`);
+      back.push(`Hidden ${l}: ∂L/∂z = (Σ weight × next layer's ∂L/∂z) × ${act}′ → ${parts.join(', ')}${n > show ? ' …' : ''}`);
+    }
+    back.push('<h4>4 · Gradient descent: nudge every weight downhill</h4>');
+    let bi = 0; for (let i = 1; i < S_[0]; i++) if (Math.abs(x[i]) > Math.abs(x[bi])) bi = i;
+    const w = net.W[0][bi], dz = net.d[1][0], lr = lab.cfg.lr, grad = dz * x[bi];
+    back.push(`Example: weight from ${nm(0, bi)} → ${nm(1, 0)}, currently ${fmt(w, 3)}`);
+    back.push(`∂L/∂w = ∂L/∂z(${nm(1, 0)}) × input = ${fmtP(dz, 3)} × ${fmtP(x[bi])} = ${fmt(grad, 4)}`);
+    back.push(`new w = w − learning rate × ∂L/∂w = ${fmt(w, 3)} − ${lr.toPrecision(2)} × ${fmtP(grad, 4)} = <span class="hl">${fmt(w - lr*grad, 4)}</span>`);
+    back.push(`Training averages this over a batch of ${lab.cfg.batch} and applies it to all ${net.W.reduce((s, W) => s + W.length, 0) + net.b.reduce((s, b) => s + b.length, 0)} parameters at once.`);
+  }
+  $('#hood').innerHTML = `<div class="hoodgrid"><div>${fwd.join('<br>')}</div><div>${back.join('<br>')}</div></div>`
+    .replace(/<br><h4>/g, '<h4>').replace(/<\/h4><br>/g, '</h4>').replace(/<br><div/g, '<div').replace(/<\/div><br>/g, '</div>');
+}
+
+// ---------------------------------------------------------------- rendering: charts
+const chartHover = {};
+const CP = { l:42, r:74, t:10, b:22 };
+function niceCeil(v){ const p = 10 ** Math.floor(Math.log10(v)); for (const m of [1, 2, 2.5, 5, 10]) if (m*p >= v) return m*p; return 10*p; }
+const LOSS_KEYS = [{ k:'trainLoss', n:'Train', c:'s1' }, { k:'testLoss', n:'Test', c:'s2' }];
+const ACC_KEYS  = [{ k:'trainAcc',  n:'Train', c:'s1' }, { k:'testAcc',  n:'Test', c:'s2' }];
+const CHARTS = {
+  lossChart: () => ({ H: cur().hist, keys: LOSS_KEYS, isAcc: false, x: 'epoch' }),
+  accChart:  () => ({ H: cur().hist, keys: ACC_KEYS,  isAcc: true,  x: 'epoch' }),
+  gdChart:   () => ({ H: gd.hist, keys: [{ k:'loss', n:'Loss', c:'s1' }], isAcc: false, x: 'step' }),
+  pcChart:   () => ({ H: pc.hist, keys: [{ k:'mistakes', n:'Mistakes', c:'s1' }], isAcc: false, int: true, x: 'pass' }),
+  bpChart:   () => ({ H: bp.hist, keys: [{ k:'loss', n:'Loss', c:'s1' }], isAcc: false, x: 'update' }),
+};
+function renderChart(id){
+  const { H, keys, isAcc, int, x: xName } = CHARTS[id]();
+  const { x: g, w, h } = fit($('#' + id));
+  g.clearRect(0, 0, w, h);
+  const pw = w - CP.l - CP.r, ph = h - CP.t - CP.b;
+  let lo = 0, hi = 1;
+  if (isAcc){ let mn = 1; for (const e of H) for (const k of keys) if (isFinite(e[k.k])) mn = Math.min(mn, e[k.k]); lo = mn < 0.5 ? 0 : 0.5; }
+  else { let mx = 0; for (const e of H) for (const k of keys) if (isFinite(e[k.k])) mx = Math.max(mx, e[k.k]); hi = int ? 4 : niceCeil(mx || 1); }
+  const xMax = Math.max(5, H.length - 1);
+  const X = i => CP.l + pw*i/xMax, Y = v => CP.t + ph*(1 - (clamp(v, lo, hi) - lo)/(hi - lo));
+  g.font = '11px system-ui'; g.lineWidth = 1;
+  for (let k = 0; k <= 4; k++){
+    const v = lo + (hi - lo)*k/4, y = Math.round(Y(v)) + .5;
+    g.strokeStyle = T.border; g.beginPath(); g.moveTo(CP.l, y); g.lineTo(CP.l + pw, y); g.stroke();
+    g.fillStyle = T.muted; g.textAlign = 'right'; g.textBaseline = 'middle';
+    g.fillText(isAcc ? Math.round(v*100) + '%' : +v.toFixed(2), CP.l - 6, y);
+  }
+  g.textBaseline = 'top'; g.textAlign = 'left'; g.fillText(xName + ' 0', CP.l, CP.t + ph + 6);
+  g.textAlign = 'right'; g.fillText(String(xMax), CP.l + pw, CP.t + ph + 6);
+  const ends = [];
+  keys.forEach((k, ki) => {
+    g.strokeStyle = T[k.c]; g.lineWidth = 2; g.lineJoin = g.lineCap = 'round'; g.setLineDash(ki ? [5, 4] : []);
+    g.beginPath(); let started = false;
+    H.forEach((e, i) => { const v = e[k.k]; if (!isFinite(v)) return; if (!started){ g.moveTo(X(i), Y(v)); started = true; } else g.lineTo(X(i), Y(v)); });
+    g.stroke(); g.setLineDash([]);
+    const last = H[H.length - 1][k.k];
+    if (isFinite(last)) ends.push({ y: Y(last), txt: `${k.n} ${isAcc ? (last*100).toFixed(0) + '%' : last.toFixed(int ? 0 : 2)}`, x: X(H.length - 1), c: T[k.c] });
+  });
+  if (ends.length === 2 && Math.abs(ends[0].y - ends[1].y) < 13){ const m = clamp((ends[0].y + ends[1].y)/2, CP.t + 13, CP.t + ph - 7), up = ends[0].y <= ends[1].y ? 0 : 1; ends[up].y = m - 7; ends[1-up].y = m + 7; }
+  g.textAlign = 'left'; g.textBaseline = 'middle'; g.fillStyle = T['text-2'];
+  for (const e of ends) g.fillText(e.txt, CP.l + pw + 6, clamp(e.y, CP.t + 6, CP.t + ph));
+  const hi_ = chartHover[id];
+  if (hi_ != null && hi_ < H.length){
+    const x = X(hi_);
+    g.strokeStyle = T.muted; g.lineWidth = 1; g.beginPath(); g.moveTo(x, CP.t); g.lineTo(x, CP.t + ph); g.stroke();
+    for (const k of keys){ const v = H[hi_][k.k]; if (!isFinite(v)) continue;
+      g.beginPath(); g.arc(x, Y(v), 4, 0, Math.PI*2); g.fillStyle = T[k.c]; g.fill(); g.strokeStyle = T.surface; g.lineWidth = 2; g.stroke(); }
+  }
+}
+
+// ---------------------------------------------------------------- rendering: picture lab pieces
+function renderPad(lab){
+  const { x: g, w, h } = fit($('#pad'));
+  drawGray(g, lab.probe.x, 0, 0, w);
+  g.strokeStyle = 'rgba(128,128,128,.22)'; g.lineWidth = 1; g.beginPath();
+  for (let i = 1; i < S; i++){ const p = Math.round(i*w/S) + .5; g.moveTo(p, 0); g.lineTo(p, h); g.moveTo(0, p); g.lineTo(w, p); }
+  g.stroke();
+  const p = lab.net.forward(lab.probe.x);
+  $('#barCat').style.width = (p[0]*100) + '%'; $('#barDog').style.width = (p[1]*100) + '%';
+  $('#pCat').textContent = (p[0]*100).toFixed(0) + '%'; $('#pDog').textContent = (p[1]*100).toFixed(0) + '%';
+  const k = argmax(p), y = lab.probe.y;
+  $('#verdict').innerHTML = `The network says <b>${NAMES[k]}</b> (${(p[k]*100).toFixed(0)}% sure)` +
+    (y == null ? '' : ` · true answer: ${NAMES[y]} ${k === y ? '✓' : '<span style="color:var(--neg)">✗</span>'}`);
+}
+function renderTiles(lab){
+  const net = lab.net, box = $('#tiles'), noHidden = net.L === 1, n = net.sizes[1];
+  $('#tilesTitle').textContent = noHidden ? 'The two output templates (no hidden layer)' : 'What each hidden neuron looks for';
+  if (box.childElementCount !== n || box.dataset.mode !== String(noHidden)){
+    box.innerHTML = ''; box.dataset.mode = String(noHidden);
+    for (let j = 0; j < n; j++){
+      const f = document.createElement('figure'); f.className = 'tile';
+      f.innerHTML = '<canvas width="20" height="20"></canvas><figcaption></figcaption>';
+      box.appendChild(f);
+    }
+  }
+  net.forward(lab.probe.x);
+  const W = net.W[0], neu = T.rgb['surface-2'];
+  [...box.children].forEach((f, j) => {
+    const cx = f.firstChild.getContext('2d'), im = cx.createImageData(S, S);
+    let m = 1e-6; for (let i = 0; i < NPIX; i++) m = Math.max(m, Math.abs(W[j*NPIX+i]));
+    for (let i = 0; i < NPIX; i++){
+      const t = W[j*NPIX+i]/m, col = mixa(neu, t > 0 ? T.rgb.pos : T.rgb.neg, Math.min(1, Math.abs(t)));
+      im.data[i*4] = col[0]; im.data[i*4+1] = col[1]; im.data[i*4+2] = col[2]; im.data[i*4+3] = 255;
+    }
+    cx.putImageData(im, 0, 0);
+    f.lastChild.textContent = noHidden ? `${NAMES[j]} · p=${(net.a[1][j]*100).toFixed(0)}%` : `h${j+1} · a=${fmt(net.a[1][j])}`;
+  });
+}
+function updateGallery(lab){
+  const box = $('#gallery'), n = Math.min(48, lab.test.length);
+  if (!lab.galleryBuilt){
+    box.innerHTML = '';
+    for (let i = 0; i < n; i++){
+      const b = document.createElement('button'); b.className = 'gimg';
+      b.innerHTML = '<canvas width="20" height="20"></canvas><span></span>';
+      drawGray(b.firstChild.getContext('2d'), lab.test[i].x, 0, 0, S);
+      b.onclick = () => { lab.probe = { x: Float32Array.from(lab.test[i].x), y: lab.test[i].y }; dirty = true; };
+      box.appendChild(b);
+    }
+    lab.galleryBuilt = true; lab.galleryKey = null;
+  }
+  const key = lab.hist.length + ':' + lab.steps;
+  if (lab.galleryKey === key && lab.galleryNet === lab.net) return;
+  lab.galleryKey = key; lab.galleryNet = lab.net;
+  let wrong = 0;
+  [...box.children].forEach((b, i) => {
+    const p = lab.testPreds[i], k = p > 0.5 ? 1 : 0, bad = k !== lab.test[i].y;
+    wrong += bad;
+    b.lastChild.textContent = `${NAMES[k]} ${Math.round((k ? p : 1-p)*100)}%`;
+    b.classList.toggle('wrong', bad);
+    b.title = `True answer: ${NAMES[lab.test[i].y]}. Click to inspect.`;
+  });
+  $('#galleryNote').textContent = `${wrong} of ${n} shown are wrong · predictions update each epoch`;
+}
+
+function renderStats(lab){
+  const e = lab.hist[lab.hist.length - 1];
+  const pct = v => isFinite(v) ? (v*100).toFixed(1) + '%' : '–';
+  $('#stats').innerHTML =
+    `<div class="stat"><span>Epoch</span><b>${lab.epoch}</b></div>` +
+    `<div class="stat"><span>Steps (batches)</span><b>${lab.steps}</b></div>` +
+    `<div class="stat"><span>Train accuracy</span><b>${pct(e.trainAcc)}</b></div>` +
+    `<div class="stat"><span>Test accuracy</span><b>${pct(e.testAcc)}</b></div>` +
+    (lab.diverged ? `<div class="warnmsg">⚠ The loss blew up to infinity because the learning rate is too high. Lower it, then press Reset weights.</div>` : '');
+}
+
+function render(){
+  if (tab === 'pc') return renderPC();
+  if (tab === 'gd') return renderGD();
+  if (tab === 'bp') return renderBP();
+  const lab = cur();
+  if (lab.kind === '2d') render2d(lab);
+  else { renderPad(lab); renderTiles(lab); updateGallery(lab); }
+  renderNet(lab); renderHood(lab);
+  renderChart('lossChart'); renderChart('accChart');
+  renderStats(lab);
+}
+
+// ---------------------------------------------------------------- shared drawing helpers
+const sig = z => 1/(1 + Math.exp(-z));
+const f3 = v => fmt(v, 3), p3 = v => fmtP(v, 3);
+function drawMark(g, x, y, cls){
+  g.beginPath();
+  if (cls === 0) g.arc(x, y, 4.5, 0, Math.PI*2); else { g.moveTo(x, y-6); g.lineTo(x+5.5, y+4); g.lineTo(x-5.5, y+4); g.closePath(); }
+  g.fillStyle = cls ? T.dog : T.cat; g.fill(); g.strokeStyle = T.surface; g.lineWidth = 1.5; g.stroke();
+}
+function arrow(g, x1, y1, x2, y2, col){
+  g.strokeStyle = col; g.fillStyle = col; g.lineWidth = 2;
+  g.beginPath(); g.moveTo(x1, y1); g.lineTo(x2, y2); g.stroke();
+  const a = Math.atan2(y2 - y1, x2 - x1);
+  g.beginPath(); g.moveTo(x2, y2); g.lineTo(x2 - 10*Math.cos(a - 0.4), y2 - 10*Math.sin(a - 0.4)); g.lineTo(x2 - 10*Math.cos(a + 0.4), y2 - 10*Math.sin(a + 0.4)); g.closePath(); g.fill();
+}
+
+// ---------------------------------------------------------------- lab: gradient descent
+// Model: P(dog) = sigmoid(w * x + b), x = snout length centred to -1..1. Two parameters -> a loss landscape we can draw.
+const GD_W = [-6, 14], GD_B = [-8, 8], GD_R = 120, GD_PAD = { l:48, r:14, t:12, b:40 };
+const gd = { data:[], w0:-4, b0:5, lr:1, batch:'all', mom:0, speed:8, running:false, acc:0 };
+const gdW = i => GD_W[0] + (GD_W[1] - GD_W[0])*(i + 0.5)/GD_R;
+const gdB = j => GD_B[1] - (GD_B[1] - GD_B[0])*(j + 0.5)/GD_R;
+function gdLoss(w, b, set = gd.data){ // mean log-loss, computed stably from the logit
+  let L = 0;
+  for (const s of set){ const z = w*s.x + b; L += Math.max(z, 0) - z*s.y + Math.log1p(Math.exp(-Math.abs(z))); }
+  return L/set.length;
+}
+function gdGrad(w, b, set){
+  let gw = 0, gb = 0;
+  for (const s of set){ const e = sig(w*s.x + b) - s.y; gw += e*s.x; gb += e; }
+  return [gw/set.length, gb/set.length];
+}
+function gdNewData(){
+  gd.data = [];
+  for (let i = 0; i < 40; i++){
+    const y = i % 2, raw = clamp((y ? 0.62 : 0.38) + randn()*0.14, 0.02, 0.98);
+    gd.data.push({ x: (raw - 0.5)*2, y, j: rand(-0.05, 0.05) });
+  }
+  const G = new Float64Array(GD_R*GD_R); let mn = Infinity, mx = 0, mi = 0;
+  for (let j = 0; j < GD_R; j++) for (let i = 0; i < GD_R; i++){
+    const L = gdLoss(gdW(i), gdB(j)); G[j*GD_R + i] = L;
+    if (L < mn){ mn = L; mi = j*GD_R + i; } if (L > mx) mx = L;
+  }
+  gd.grid = G; gd.gmin = mn; gd.gmax = mx; gd.best = [gdW(mi % GD_R), gdB(mi/GD_R | 0)];
+  gd.levels = Array.from({ length: 12 }, (_, k) => mn*Math.pow(mx/mn, ((k + 1)/13)**1.7));
+  gd.landImg = null; gdContours(); gdReset();
+}
+function gdContours(){ // marching squares on the loss grid
+  const R = GD_R, G = gd.grid, segs = [];
+  for (const lv of gd.levels) for (let j = 0; j < R - 1; j++) for (let i = 0; i < R - 1; i++){
+    const a = G[j*R + i], b = G[j*R + i + 1], c = G[(j + 1)*R + i + 1], d = G[(j + 1)*R + i];
+    const f = (u, v) => (lv - u)/(v - u), pts = [];
+    if ((a > lv) !== (b > lv)) pts.push([i + f(a, b), j]);
+    if ((b > lv) !== (c > lv)) pts.push([i + 1, j + f(b, c)]);
+    if ((d > lv) !== (c > lv)) pts.push([i + f(d, c), j + 1]);
+    if ((a > lv) !== (d > lv)) pts.push([i, j + f(a, d)]);
+    for (let k = 0; k + 1 < pts.length; k += 2) segs.push([pts[k][0] + .5, pts[k][1] + .5, pts[k + 1][0] + .5, pts[k + 1][1] + .5]);
+  }
+  gd.segs = segs;
+}
+function gdLandImage(){
+  if (gd.landImg) return gd.landImg;
+  const cv = document.createElement('canvas'); cv.width = cv.height = GD_R;
+  const cx = cv.getContext('2d'), im = cx.createImageData(GD_R, GD_R), lmn = Math.log(gd.gmin), lr = Math.log(gd.gmax) - lmn;
+  for (let k = 0; k < GD_R*GD_R; k++){
+    const c = mixa(T.rgb.surface, T.rgb.seq, 0.03 + 0.8*(Math.log(gd.grid[k]) - lmn)/lr);
+    im.data[k*4] = c[0]; im.data[k*4 + 1] = c[1]; im.data[k*4 + 2] = c[2]; im.data[k*4 + 3] = 255;
+  }
+  cx.putImageData(im, 0, 0);
+  return gd.landImg = cv;
+}
+function gdReset(){
+  gd.w = gd.w0; gd.b = gd.b0; gd.vw = gd.vb = 0; gd.path = [[gd.w, gd.b]];
+  gd.hist = [{ epoch: 0, loss: gdLoss(gd.w, gd.b) }]; gd.last = null; gd.diverged = false;
+}
+function gdStep(){
+  let set = gd.data;
+  if (gd.batch !== 'all'){ set = []; for (let i = 0; i < +gd.batch; i++) set.push(gd.data[Math.random()*gd.data.length | 0]); }
+  const [gw, gb] = gdGrad(gd.w, gd.b, set);
+  gd.last = { w: gd.w, b: gd.b, gw, gb, n: set.length, vw: gd.vw, vb: gd.vb, lr: gd.lr, mom: gd.mom };
+  gd.vw = gd.mom*gd.vw - gd.lr*gw; gd.vb = gd.mom*gd.vb - gd.lr*gb;
+  gd.w += gd.vw; gd.b += gd.vb;
+  gd.path.push([gd.w, gd.b]); if (gd.path.length > 3000) gd.path.shift();
+  const L = gdLoss(gd.w, gd.b); gd.hist.push({ epoch: gd.hist.length, loss: L });
+  if (!isFinite(L) || Math.abs(gd.w) > 1e3 || Math.abs(gd.b) > 1e3){ gd.diverged = true; setGdRunning(false); }
+}
+function setGdRunning(v){ gd.running = v; gd.acc = 0; $('#gdPlay').textContent = v ? '❚❚ Pause' : '▶ Run'; }
+function gdOutputs(){ $('#gdLrOut').textContent = gd.lr; $('#gdSpeedOut').textContent = gd.speed + ' steps / second'; }
+function gdSyncControls(){
+  $('#gdLr').value = Math.round((Math.log10(gd.lr) + 2)/3.7*100); $('#gdSpeed').value = gd.speed;
+  $('#gdBatch').value = gd.batch; $('#gdMom').value = String(gd.mom); gdOutputs();
+}
+
+function renderGD(){
+  // ---- the landscape
+  const { x: g, w, h } = fit($('#gdLand')), P = GD_PAD, pw = w - P.l - P.r, ph = h - P.t - P.b;
+  const toPx = (W, B) => [P.l + (W - GD_W[0])/(GD_W[1] - GD_W[0])*pw, P.t + (GD_B[1] - B)/(GD_B[1] - GD_B[0])*ph];
+  g.clearRect(0, 0, w, h);
+  g.imageSmoothingEnabled = true; g.drawImage(gdLandImage(), P.l, P.t, pw, ph);
+  const cw = pw/GD_R, ch = ph/GD_R;
+  g.strokeStyle = T['text-2']; g.globalAlpha = 0.35; g.lineWidth = 1; g.beginPath();
+  for (const s of gd.segs){ g.moveTo(P.l + s[0]*cw, P.t + s[1]*ch); g.lineTo(P.l + s[2]*cw, P.t + s[3]*ch); }
+  g.stroke(); g.globalAlpha = 1;
+  g.strokeStyle = T.border; g.strokeRect(P.l + .5, P.t + .5, pw, ph);
+  g.font = '11px system-ui'; g.fillStyle = T.muted; g.textAlign = 'center'; g.textBaseline = 'top';
+  for (const v of [-5, 0, 5, 10]) g.fillText(v, toPx(v, 0)[0], P.t + ph + 5);
+  g.textAlign = 'right'; g.textBaseline = 'middle';
+  for (const v of [-8, -4, 0, 4, 8]) g.fillText(v, P.l - 6, toPx(0, v)[1]);
+  g.fillStyle = T['text-2']; g.font = '12px system-ui'; g.textAlign = 'center'; g.textBaseline = 'top';
+  g.fillText('w: how much snout length counts →', P.l + pw/2, P.t + ph + 21);
+  g.save(); g.translate(14, P.t + ph/2); g.rotate(-Math.PI/2); g.textBaseline = 'middle'; g.fillText('b: bias →', 0, 0); g.restore();
+
+  g.save(); g.beginPath(); g.rect(P.l, P.t, pw, ph); g.clip();
+  const [mx, my] = toPx(...gd.best);
+  g.strokeStyle = T.text; g.lineWidth = 2; g.beginPath(); g.moveTo(mx - 5, my - 5); g.lineTo(mx + 5, my + 5); g.moveTo(mx + 5, my - 5); g.lineTo(mx - 5, my + 5); g.stroke();
+  g.fillStyle = T.text; g.font = '11px system-ui'; g.textAlign = 'left'; g.textBaseline = 'middle'; g.fillText('lowest loss', mx + 9, my);
+  const pts = gd.path.map(p => toPx(p[0], p[1]));
+  g.strokeStyle = T.text; g.lineWidth = 1.5; g.beginPath(); pts.forEach((p, i) => i ? g.lineTo(p[0], p[1]) : g.moveTo(p[0], p[1])); g.stroke();
+  if (pts.length < 400){ g.fillStyle = T.text; for (const p of pts){ g.beginPath(); g.arc(p[0], p[1], 2.2, 0, Math.PI*2); g.fill(); } }
+  g.beginPath(); g.arc(pts[0][0], pts[0][1], 5, 0, Math.PI*2); g.lineWidth = 2; g.strokeStyle = T.text; g.stroke();
+  const [cx, cy] = pts[pts.length - 1];
+  const [gw, gb] = gdGrad(gd.w, gd.b, gd.data);
+  let dx = -gw/(GD_W[1] - GD_W[0])*pw, dy = gb/(GD_B[1] - GD_B[0])*ph; const dl = Math.hypot(dx, dy);
+  if (dl > 1e-9 && !gd.diverged){
+    dx = dx/dl*48; dy = dy/dl*48; arrow(g, cx, cy, cx + dx, cy + dy, T.text);
+    g.font = '600 11px system-ui'; g.textAlign = 'center'; g.fillText('downhill', cx + dx*1.45, cy + dy*1.45);
+  }
+  g.beginPath(); g.arc(cx, cy, 7, 0, Math.PI*2); g.fillStyle = T.s2; g.fill(); g.strokeStyle = T.surface; g.lineWidth = 2; g.stroke();
+  g.restore();
+
+  // ---- the same model as an S-curve over the data
+  const c2 = fit($('#gdData')), g2 = c2.x, Q = { l:46, r:14, t:10, b:36 }, qw = c2.w - Q.l - Q.r, qh = c2.h - Q.t - Q.b;
+  g2.clearRect(0, 0, c2.w, c2.h);
+  const X = raw => Q.l + raw*qw, Y = p => Q.t + (1 - (p + 0.12)/1.24)*qh;
+  g2.font = '11px system-ui'; g2.lineWidth = 1;
+  for (const v of [0, 0.5, 1]){
+    const y = Math.round(Y(v)) + .5; g2.strokeStyle = T.border; g2.beginPath(); g2.moveTo(Q.l, y); g2.lineTo(Q.l + qw, y); g2.stroke();
+    g2.fillStyle = T.muted; g2.textAlign = 'right'; g2.textBaseline = 'middle'; g2.fillText((v*100) + '%', Q.l - 6, y);
+  }
+  g2.textAlign = 'center'; g2.textBaseline = 'top';
+  for (const v of [0, 0.5, 1]) g2.fillText(v, X(v), Q.t + qh + 4);
+  g2.fillStyle = T['text-2']; g2.font = '12px system-ui'; g2.fillText('Snout length →', Q.l + qw/2, Q.t + qh + 19);
+  g2.save(); g2.translate(11, Q.t + qh/2); g2.rotate(-Math.PI/2); g2.textBaseline = 'middle'; g2.fillText('P(dog)', 0, 0); g2.restore();
+  const rawc = -gd.b/gd.w/2 + 0.5;
+  if (isFinite(rawc) && rawc > 0 && rawc < 1){
+    g2.strokeStyle = T.muted; g2.setLineDash([4, 4]); g2.beginPath(); g2.moveTo(X(rawc), Q.t); g2.lineTo(X(rawc), Q.t + qh); g2.stroke(); g2.setLineDash([]);
+    g2.fillStyle = T['text-2']; g2.font = '11px system-ui'; g2.textAlign = 'left'; g2.textBaseline = 'top'; g2.fillText('50/50 cut-off', X(rawc) + 4, Q.t + 2);
+  }
+  g2.strokeStyle = T.s1; g2.lineWidth = 2; g2.beginPath();
+  for (let k = 0; k <= 120; k++){ const raw = k/120, y = Y(sig(gd.w*(raw - 0.5)*2 + gd.b)); k ? g2.lineTo(X(raw), y) : g2.moveTo(X(raw), y); }
+  g2.stroke();
+  let correct = 0;
+  for (const s of gd.data){ correct += (sig(gd.w*s.x + gd.b) > 0.5) === (s.y === 1); drawMark(g2, X(s.x/2 + 0.5), Y(s.y + s.j), s.y); }
+
+  // ---- the math
+  const L = gdLoss(gd.w, gd.b), lst = gd.last;
+  let m = `Model: P(dog) = σ(w·x + b) with <span class="hl">w = ${fmt(gd.w)}</span>, <span class="hl">b = ${fmt(gd.b)}</span><br>` +
+    `Loss on all 40 animals = <span class="hl">${L.toFixed(3)}</span> · ${correct}/40 classified correctly<br>` +
+    `Gradient here: ∂L/∂w = mean((p − y)·x) = ${f3(gw)}, ∂L/∂b = mean(p − y) = ${f3(gb)}<br><br>`;
+  if (lst){
+    m += `Last step, gradient measured on ${lst.n === 40 ? 'all 40 animals' : lst.n === 1 ? '1 random animal' : lst.n + ' random animals'}:<br>`;
+    if (lst.mom){
+      m += `&nbsp;&nbsp;velocity v ← ${lst.mom}·v − η·gradient, then step by v<br>` +
+        `&nbsp;&nbsp;w ← ${fmt(lst.w)} + (${lst.mom}×${fmtP(lst.vw)} − ${lst.lr}×${p3(lst.gw)}) = <span class="hl">${fmt(lst.w + lst.mom*lst.vw - lst.lr*lst.gw)}</span><br>` +
+        `&nbsp;&nbsp;b ← ${fmt(lst.b)} + (${lst.mom}×${fmtP(lst.vb)} − ${lst.lr}×${p3(lst.gb)}) = <span class="hl">${fmt(lst.b + lst.mom*lst.vb - lst.lr*lst.gb)}</span>`;
+    } else {
+      m += `&nbsp;&nbsp;w ← w − η·∂L/∂w = ${fmt(lst.w)} − ${lst.lr} × ${p3(lst.gw)} = <span class="hl">${fmt(lst.w - lst.lr*lst.gw)}</span><br>` +
+        `&nbsp;&nbsp;b ← b − η·∂L/∂b = ${fmt(lst.b)} − ${lst.lr} × ${p3(lst.gb)} = <span class="hl">${fmt(lst.b - lst.lr*lst.gb)}</span>`;
+    }
+  } else m += 'Press <b>Take 1 step</b> to see the update rule with real numbers.';
+  $('#gdMath').innerHTML = m;
+  $('#gdStats').innerHTML =
+    `<div class="stat"><span>Steps</span><b>${gd.hist.length - 1}</b></div>` +
+    `<div class="stat"><span>Loss</span><b>${L.toFixed(3)}</b></div>` +
+    `<div class="stat"><span>Correct</span><b>${correct} / 40</b></div>` +
+    `<div class="stat"><span>Lowest on the map</span><b>${gd.gmin.toFixed(3)}</b></div>` +
+    (gd.diverged ? '<div class="warnmsg">⚠ The steps flew off the map because the learning rate is too high. Lower it and press Restart.</div>' : '');
+  renderChart('gdChart');
+}
+
+const land = $('#gdLand');
+function landPoint(ev){
+  const r = land.getBoundingClientRect(), P = GD_PAD;
+  const u = (ev.clientX - r.left - P.l)/(r.width - P.l - P.r), v = (ev.clientY - r.top - P.t)/(r.height - P.t - P.b);
+  return (u < 0 || u > 1 || v < 0 || v > 1) ? null : [GD_W[0] + u*(GD_W[1] - GD_W[0]), GD_B[1] - v*(GD_B[1] - GD_B[0])];
+}
+land.addEventListener('pointermove', ev => {
+  const p = landPoint(ev); if (!p){ hideTip(); return; }
+  showTip(ev, `w = ${fmt(p[0])}, b = ${fmt(p[1])}<br>loss = ${gdLoss(p[0], p[1]).toFixed(3)}<br><span style="color:var(--muted)">click to start here</span>`);
+});
+land.addEventListener('pointerleave', hideTip);
+land.addEventListener('click', ev => { const p = landPoint(ev); if (!p) return; gd.w0 = p[0]; gd.b0 = p[1]; gdReset(); dirty = true; });
+$('#gdPlay').onclick = () => setGdRunning(!gd.running);
+$('#gdStepBtn').onclick = () => { setGdRunning(false); gdStep(); dirty = true; };
+$('#gdRestart').onclick = () => { setGdRunning(false); gdReset(); dirty = true; };
+$('#gdNew').onclick = () => { setGdRunning(false); gdNewData(); dirty = true; };
+$('#gdLr').oninput = e => { gd.lr = +(10 ** (-2 + 3.7*e.target.value/100)).toPrecision(2); gdOutputs(); dirty = true; };
+$('#gdBatch').onchange = e => { gd.batch = e.target.value; };
+$('#gdMom').onchange = e => { gd.mom = +e.target.value; gd.vw = gd.vb = 0; };
+$('#gdSpeed').oninput = e => { gd.speed = +e.target.value; gdOutputs(); };
+
+// ---------------------------------------------------------------- lab: backpropagation
+// x1, x2 -> h1, h2 (sigmoid) -> p (sigmoid) = P(dog); log-loss against y.
+const BP_KEYS = ['w1', 'w2', 'b1', 'w3', 'w4', 'b2', 'w5', 'w6', 'b3'];
+const SUB = { w1:'w₁', w2:'w₂', w3:'w₃', w4:'w₄', w5:'w₅', w6:'w₆', b1:'b₁', b2:'b₂', b3:'b₃' };
+const BP_DESC = { w1:'ears → h₁', w2:'snout → h₁', b1:'bias of h₁', w3:'ears → h₂', w4:'snout → h₂', b2:'bias of h₂', w5:'h₁ → output', w6:'h₂ → output', b3:'bias of output' };
+const BP_REVEAL = { w5:6, w6:6, b3:6, w1:9, w2:9, b1:9, w3:10, w4:10, b2:10 };
+const bp = { P: { w1:0.6, w2:-0.4, b1:0.1, w3:-0.3, w4:0.8, b2:0, w5:0.5, w6:-0.7, b3:0.2 }, ex: { ears:0.9, snout:0.2, y:0 }, step:0, lr:1, hist:[] };
+function bpCompute(P, ex){
+  const x1 = ex.ears, x2 = ex.snout, y = ex.y;
+  const z1 = P.w1*x1 + P.w2*x2 + P.b1, h1 = sig(z1), z2 = P.w3*x1 + P.w4*x2 + P.b2, h2 = sig(z2);
+  const zo = P.w5*h1 + P.w6*h2 + P.b3, p = sig(zo);
+  const L = -(y*Math.log(p) + (1 - y)*Math.log(1 - p));
+  const dzo = p - y, dh1 = dzo*P.w5, dh2 = dzo*P.w6, dz1 = dh1*h1*(1 - h1), dz2 = dh2*h2*(1 - h2);
+  const g = { w5: dzo*h1, w6: dzo*h2, b3: dzo, w1: dz1*x1, w2: dz1*x2, b1: dz1, w3: dz2*x1, w4: dz2*x2, b2: dz2 };
+  return { x1, x2, y, z1, h1, z2, h2, zo, p, L, dzo, dh1, dh2, dz1, dz2, g };
+}
+function bpNumGrad(P, ex, k){ const e = 1e-4, a = { ...P }, b = { ...P }; a[k] += e; b[k] -= e; return (bpCompute(a, ex).L - bpCompute(b, ex).L)/(2*e); }
+const satNote = (h, name) => h*(1 - h) < 0.06 ? `<p>⚠ ${name} is <b>saturated</b> (very close to 0 or 1), so its slope h(1−h) is tiny and very little blame gets through. This is the <b>vanishing gradient</b> problem.</p>` : '';
+const BP_STEPS = [
+  { title: 'The setup', mode: 'f', nodes: [], edges: [], params: [], html: (C) => `
+    <p>One animal goes in. For <b>each of the 9 weights</b> we want to know which way to nudge it, and how hard, so that the loss goes down. That number is the weight's gradient ∂L/∂w.</p>
+    <div class="eq">x₁ (ears) = ${C.x1.toFixed(2)}, x₂ (snout) = ${C.x2.toFixed(2)}<br>true answer: ${C.y ? 'dog → y = 1' : 'cat → y = 0'}</div>
+    <p>The output p is the network's probability that the animal is a dog. Every neuron uses the sigmoid σ(z) = 1 / (1 + e<sup>−z</sup>), which squashes any number into the range 0 to 1.</p>
+    <p>Press <b>Next ▶</b>. The <span class="fw">forward pass</span> comes first, then the <span class="bw">backward pass</span>.</p>` },
+  { title: 'Forward ①: hidden neuron h₁', mode: 'f', nodes: ['x1', 'x2', 'h1'], edges: ['w1', 'w2'], params: ['w1', 'w2', 'b1'], html: (C, P) => `
+    <p>h₁ multiplies each input by its weight, adds them up, and adds a bias:</p>
+    <div class="eq">z₁ = w₁·x₁ + w₂·x₂ + b₁<br>&nbsp;&nbsp; = ${p3(P.w1)}·${C.x1.toFixed(2)} + ${p3(P.w2)}·${C.x2.toFixed(2)} + ${p3(P.b1)} = <b>${f3(C.z1)}</b></div>
+    <p>then squashes the sum with the sigmoid:</p>
+    <div class="eq">h₁ = σ(z₁) = σ(${f3(C.z1)}) = <b>${f3(C.h1)}</b></div>` },
+  { title: 'Forward ②: hidden neuron h₂', mode: 'f', nodes: ['x1', 'x2', 'h2'], edges: ['w3', 'w4'], params: ['w3', 'w4', 'b2'], html: (C, P) => `
+    <p>Same recipe with h₂'s own weights:</p>
+    <div class="eq">z₂ = w₃·x₁ + w₄·x₂ + b₂<br>&nbsp;&nbsp; = ${p3(P.w3)}·${C.x1.toFixed(2)} + ${p3(P.w4)}·${C.x2.toFixed(2)} + ${p3(P.b2)} = <b>${f3(C.z2)}</b><br>h₂ = σ(z₂) = <b>${f3(C.h2)}</b></div>
+    <p>h₁ and h₂ are the network's own made-up <i>features</i>. Nobody told them what to detect. Training will shape them.</p>` },
+  { title: 'Forward ③: the output', mode: 'f', nodes: ['h1', 'h2', 'o'], edges: ['w5', 'w6'], params: ['w5', 'w6', 'b3'], html: (C, P) => `
+    <p>The output neuron does the same thing with the hidden values as its inputs:</p>
+    <div class="eq">zₒ = w₅·h₁ + w₆·h₂ + b₃<br>&nbsp;&nbsp; = ${p3(P.w5)}·${f3(C.h1)} + ${p3(P.w6)}·${f3(C.h2)} + ${p3(P.b3)} = <b>${f3(C.zo)}</b><br>p = σ(zₒ) = <b>${f3(C.p)}</b></div>
+    <p>The network says <b>${(C.p*100).toFixed(1)}% dog</b>. The right answer is ${C.y ? 'dog' : 'cat'}.</p>` },
+  { title: 'The loss: how wrong was it?', mode: 'f', nodes: ['o', 'L'], edges: ['oL'], params: [], html: (C) => `
+    <p>The log-loss measures how surprised the network should be by the true answer:</p>
+    <div class="eq">L = −[ y·ln p + (1 − y)·ln(1 − p) ]<br>&nbsp;&nbsp;= −ln(${C.y ? 'p' : '1 − p'}) = −ln(${(C.y ? C.p : 1 - C.p).toFixed(3)}) = <b>${f3(C.L)}</b></div>
+    <p>A confident correct answer gives a loss near 0, a coin flip gives 0.693, and a confident wrong answer gives a large loss. Everything from here on answers one question: <i>how does L change if we wiggle each weight?</i></p>` },
+  { title: 'Backward ①: error signal at the output', mode: 'b', nodes: ['o', 'L'], edges: ['oL'], params: [], html: (C) => `
+    <p>Start at the end. How does the loss change if the output's sum zₒ changes? The chain rule goes through the loss and then the sigmoid, and the two pieces cancel beautifully:</p>
+    <div class="eq">∂L/∂zₒ = ∂L/∂p · ∂p/∂zₒ = (p − y)/(p(1 − p)) · p(1 − p)<br>&nbsp;&nbsp;= p − y = ${C.p.toFixed(3)} − ${C.y} = <b>${f3(C.dzo)}</b></div>
+    <p>Call this the output's <b>error signal δₒ</b>. ${C.dzo > 0 ? 'It is positive, so the loss would drop if zₒ were <i>smaller</i> (less dog).' : 'It is negative, so the loss would drop if zₒ were <i>larger</i> (more dog).'}</p>` },
+  { title: 'Backward ②: gradients of w₅, w₆, b₃', mode: 'b', nodes: ['h1', 'h2', 'o'], edges: ['w5', 'w6'], params: ['w5', 'w6', 'b3'], html: (C) => `
+    <p>zₒ = w₅·h₁ + w₆·h₂ + b₃. If w₅ grows by a tiny amount ε, zₒ grows by h₁·ε. So by the chain rule:</p>
+    <div class="eq">∂L/∂w₅ = δₒ · h₁ = ${p3(C.dzo)} × ${f3(C.h1)} = <b>${f3(C.g.w5)}</b><br>∂L/∂w₆ = δₒ · h₂ = ${p3(C.dzo)} × ${f3(C.h2)} = <b>${f3(C.g.w6)}</b><br>∂L/∂b₃ = δₒ · 1 = <b>${f3(C.g.b3)}</b></div>
+    <p>The pattern to remember: <b>gradient of a weight = (error signal of the neuron it feeds) × (the value coming in on its wire).</b></p>` },
+  { title: 'Backward ③: error signal at h₁', mode: 'b', nodes: ['h1', 'o'], edges: ['w5'], params: [], html: (C, P) => `
+    <p>How much is h₁ to blame? h₁ affects the loss only through wire w₅, so pass the output's error signal back along it:</p>
+    <div class="eq">∂L/∂h₁ = δₒ · w₅ = ${p3(C.dzo)} × ${p3(P.w5)} = ${f3(C.dh1)}</div>
+    <p>Then go back through h₁'s sigmoid. The sigmoid's slope is σ′(z) = h(1 − h):</p>
+    <div class="eq">δ₁ = ∂L/∂z₁ = ∂L/∂h₁ · h₁(1 − h₁)<br>&nbsp;&nbsp;= ${p3(C.dh1)} × ${f3(C.h1)} × ${f3(1 - C.h1)} = <b>${f3(C.dz1)}</b></div>${satNote(C.h1, 'h₁')}` },
+  { title: 'Backward ④: error signal at h₂', mode: 'b', nodes: ['h2', 'o'], edges: ['w6'], params: [], html: (C, P) => `
+    <p>Same for h₂, through its own wire w₆:</p>
+    <div class="eq">∂L/∂h₂ = δₒ · w₆ = ${p3(C.dzo)} × ${p3(P.w6)} = ${f3(C.dh2)}<br>δ₂ = ∂L/∂h₂ · h₂(1 − h₂) = ${p3(C.dh2)} × ${f3(C.h2)} × ${f3(1 - C.h2)} = <b>${f3(C.dz2)}</b></div>
+    <p>In a network where a neuron feeds several neurons, you would <i>add up</i> the blame arriving from each of them.</p>${satNote(C.h2, 'h₂')}` },
+  { title: 'Backward ⑤: gradients of w₁, w₂, b₁', mode: 'b', nodes: ['x1', 'x2', 'h1'], edges: ['w1', 'w2'], params: ['w1', 'w2', 'b1'], html: (C) => `
+    <p>Exactly the same pattern as step 6, one layer further back: error signal × incoming value.</p>
+    <div class="eq">∂L/∂w₁ = δ₁ · x₁ = ${p3(C.dz1)} × ${C.x1.toFixed(2)} = <b>${f3(C.g.w1)}</b><br>∂L/∂w₂ = δ₁ · x₂ = ${p3(C.dz1)} × ${C.x2.toFixed(2)} = <b>${f3(C.g.w2)}</b><br>∂L/∂b₁ = δ₁ = <b>${f3(C.g.b1)}</b></div>
+    ${C.x1 === 0 || C.x2 === 0 ? '<p>An input of 0 means its weight played no part in this prediction, so its gradient is 0.</p>' : ''}` },
+  { title: 'Backward ⑥: gradients of w₃, w₄, b₂', mode: 'b', nodes: ['x1', 'x2', 'h2'], edges: ['w3', 'w4'], params: ['w3', 'w4', 'b2'], html: (C) => `
+    <div class="eq">∂L/∂w₃ = δ₂ · x₁ = ${p3(C.dz2)} × ${C.x1.toFixed(2)} = <b>${f3(C.g.w3)}</b><br>∂L/∂w₄ = δ₂ · x₂ = ${p3(C.dz2)} × ${C.x2.toFixed(2)} = <b>${f3(C.g.w4)}</b><br>∂L/∂b₂ = δ₂ = <b>${f3(C.g.b2)}</b></div>
+    <p>That's all 9 gradients from <b>one</b> forward pass and <b>one</b> backward pass. Compare them with the brute-force "nudge check" in the table below.</p>` },
+  { title: 'Update: gradient descent', mode: 'u', nodes: [], edges: [], params: BP_KEYS, html: (C, P) => {
+    const P2 = {}; for (const k of BP_KEYS) P2[k] = P[k] - bp.lr*C.g[k];
+    const C2 = bpCompute(P2, bp.ex);
+    return `<p>Every weight takes a small step <b>against</b> its gradient:</p>
+    <div class="eq">w ← w − η · ∂L/∂w &nbsp;&nbsp;(learning rate η = ${bp.lr})<br>e.g. w₅ ← ${f3(P.w5)} − ${bp.lr} × ${p3(C.g.w5)} = <b>${f3(P2.w5)}</b></div>
+    <p>The <i>New value</i> column below shows all 9. With the new weights, the same animal gives:</p>
+    <div class="eq">p: ${f3(C.p)} → ${f3(C2.p)}<br>L: ${f3(C.L)} → <b>${f3(C2.L)}</b></div>
+    <p>Press <b>Apply update ▶</b> to keep the new weights and go round again. Real training does exactly this, averaged over a batch of many examples.</p>`; } },
+];
+function bpResetHist(){ bp.hist = [{ epoch: 0, loss: bpCompute(bp.P, bp.ex).L }]; }
+function bpApply(){
+  const C = bpCompute(bp.P, bp.ex);
+  for (const k of BP_KEYS) bp.P[k] -= bp.lr*C.g[k];
+  bp.hist.push({ epoch: bp.hist.length, loss: bpCompute(bp.P, bp.ex).L });
+}
+function bpNext(){ if (bp.step === BP_STEPS.length - 1){ bpApply(); bp.step = 1; } else bp.step++; dirty = true; }
+function bpSync(){
+  $('#bpEars').value = bp.ex.ears; $('#bpSnout').value = bp.ex.snout; $('#bpY').value = String(bp.ex.y); $('#bpLr').value = bp.lr;
+  $('#bpEarsOut').textContent = bp.ex.ears.toFixed(2); $('#bpSnoutOut').textContent = bp.ex.snout.toFixed(2); $('#bpLrOut').textContent = bp.lr;
+}
+function pill(g, x, y, lines, stroke){
+  const lh = 15, wd = Math.max(...lines.map(t => g.measureText(t).width)) + 12, ht = lines.length*lh + 6;
+  g.fillStyle = T.surface; g.strokeStyle = stroke; g.lineWidth = 1.5;
+  g.beginPath(); g.roundRect(x - wd/2, y - ht/2, wd, ht, 6); g.fill(); g.stroke();
+  g.fillStyle = T.text; lines.forEach((t, i) => g.fillText(t, x, y - ht/2 + 3 + lh*(i + 0.5)));
+}
+function renderBP(){
+  const P = bp.P, C = bpCompute(P, bp.ex), s = bp.step, st = BP_STEPS[s];
+  const { x: g, w, h } = fit($('#bpNet'));
+  g.clearRect(0, 0, w, h);
+  const R = Math.max(15, Math.min(24, w*0.035));
+  const N = { x1:[w*0.09, h*0.24], x2:[w*0.09, h*0.76], h1:[w*0.45, h*0.24], h2:[w*0.45, h*0.76], o:[w*0.8, h*0.5], L:[w*0.95, h*0.5] };
+  const E = { w1:['x1','h1'], w2:['x2','h1'], w3:['x1','h2'], w4:['x2','h2'], w5:['h1','o'], w6:['h2','o'], oL:['o','L'] };
+  const col = st.mode === 'b' ? T.s2 : st.mode === 'u' ? T.text : T.s1;
+  const eOn = st.mode === 'u' ? Object.keys(E) : st.edges, nOn = st.mode === 'u' ? Object.keys(N) : st.nodes;
+  const lerp = (a, b, t) => [a[0] + (b[0] - a[0])*t, a[1] + (b[1] - a[1])*t];
+  for (const [k, [a, b]] of Object.entries(E)){
+    const on = eOn.includes(k);
+    g.strokeStyle = on ? col : T.border; g.lineWidth = on ? 3.5 : 2;
+    g.beginPath(); g.moveTo(...N[a]); g.lineTo(...N[b]); g.stroke();
+    if (on && st.mode !== 'u'){ // arrowhead showing which way information flows
+      const p = lerp(N[a], N[b], k === 'oL' ? 0.5 : k === 'w5' || k === 'w6' ? 0.7 : 0.62);
+      const ang = Math.atan2(N[b][1] - N[a][1], N[b][0] - N[a][0]) + (st.mode === 'b' ? Math.PI : 0);
+      g.fillStyle = col; g.beginPath();
+      for (const d of [0, 2.5, -2.5]) g.lineTo(p[0] + 9*Math.cos(ang + d), p[1] + 9*Math.sin(ang + d));
+      g.closePath(); g.fill();
+    }
+  }
+  g.font = '12px system-ui'; g.textBaseline = 'middle'; g.textAlign = 'center';
+  for (const k of ['w1', 'w2', 'w3', 'w4', 'w5', 'w6']){
+    const [a, b] = E[k], p = lerp(N[a], N[b], k === 'w1' || k === 'w4' ? 0.42 : 0.3);
+    const lines = [`${SUB[k]} = ${f3(P[k])}`];
+    if (s >= BP_REVEAL[k]) lines.push(`∂L/∂${SUB[k]} = ${f3(C.g[k])}`);
+    pill(g, p[0], p[1], lines, eOn.includes(k) ? col : T.border);
+  }
+  const NL = { x1:'x₁', x2:'x₂', h1:'h₁', h2:'h₂', o:'p', L:'L' };
+  for (const [k, [x, y]] of Object.entries(N)){
+    const on = nOn.includes(k);
+    g.beginPath(); if (k === 'L') g.roundRect(x - R, y - R*0.8, R*2, R*1.6, 6); else g.arc(x, y, R, 0, Math.PI*2);
+    g.fillStyle = T['surface-2']; g.fill(); g.strokeStyle = on ? col : T.muted; g.lineWidth = on ? 3 : 1.5; g.stroke();
+    g.fillStyle = T.text; g.font = '600 15px system-ui'; g.fillText(NL[k], x, y);
+  }
+  const txt = {
+    x1: [-1, [`ears = ${C.x1.toFixed(2)}`]],
+    x2: [ 1, [`snout = ${C.x2.toFixed(2)}`]],
+    h1: [-1, [...(s >= 7 ? [`δ₁ = ∂L/∂z₁ = ${f3(C.dz1)}`] : []), s >= 1 ? `z₁ = ${f3(C.z1)} → h₁ = ${f3(C.h1)}` : 'h₁ = ?', `b₁ = ${f3(P.b1)}`]],
+    h2: [ 1, [`b₂ = ${f3(P.b2)}`, s >= 2 ? `z₂ = ${f3(C.z2)} → h₂ = ${f3(C.h2)}` : 'h₂ = ?', ...(s >= 8 ? [`δ₂ = ∂L/∂z₂ = ${f3(C.dz2)}`] : [])]],
+    o:  [ 1, [`b₃ = ${f3(P.b3)}`, s >= 3 ? `zₒ = ${f3(C.zo)} → p = ${f3(C.p)}` : 'p = ?', ...(s >= 5 ? [`δₒ = ∂L/∂zₒ = ${f3(C.dzo)}`] : [])]],
+    L:  [-1, [s >= 4 ? `L = ${f3(C.L)}` : 'L = ?', `target y = ${C.y} (${C.y ? 'dog' : 'cat'})`]],
+  };
+  for (const [k, [dir, lines]] of Object.entries(txt)){
+    const [x, y] = N[k], lh = 16, rr = k === 'L' ? R*0.8 : R;
+    g.font = '600 12px system-ui';
+    const half = Math.max(...lines.map(t => g.measureText(t).width))/2, cx = clamp(x, half + 4, w - half - 4);
+    const y0 = dir > 0 ? y + rr + 14 : y - rr - 14 - (lines.length - 1)*lh;
+    lines.forEach((t, i) => {
+      const strong = t.startsWith('δ') || t.startsWith('L =');
+      g.font = strong ? '600 12px system-ui' : '12px system-ui'; g.fillStyle = strong ? T.text : T['text-2'];
+      g.fillText(t, cx, y0 + i*lh);
+    });
+  }
+
+  $('#bpTitle').textContent = st.title;
+  $('#bpStepNo').textContent = `step ${s} of ${BP_STEPS.length - 1}`;
+  $('#bpExplain').innerHTML = st.html(C, P);
+  document.querySelectorAll('.bpNext').forEach(b => { b.textContent = s === BP_STEPS.length - 1 ? 'Apply update ▶' : 'Next ▶'; });
+  document.querySelectorAll('.bpBack').forEach(b => { b.disabled = s === 0; });
+
+  let rows = '<thead><tr><th>Weight</th><th>Connects</th><th>Value</th><th>∂L/∂w by backprop</th><th>Nudge check</th><th>New value</th></tr></thead><tbody>';
+  for (const k of BP_KEYS){
+    const rev = s >= BP_REVEAL[k], num = rev ? bpNumGrad(P, bp.ex, k) : 0;
+    rows += `<tr class="${st.params.includes(k) && st.mode !== 'u' ? 'hlrow' : ''}"><td>${SUB[k]}</td><td>${BP_DESC[k]}</td><td>${f3(P[k])}</td>` +
+      `<td>${rev ? f3(C.g[k]) : '?'}</td><td>${rev ? f3(num) + (Math.abs(num - C.g[k]) < 1e-5 ? ' ✓' : ' ✗') : '–'}</td>` +
+      `<td>${s === BP_STEPS.length - 1 ? f3(P[k] - bp.lr*C.g[k]) : '–'}</td></tr>`;
+  }
+  $('#bpTable').innerHTML = rows + '</tbody>';
+  $('#bpStats').innerHTML =
+    `<div class="stat"><span>Step</span><b>${s} / ${BP_STEPS.length - 1}</b></div>` +
+    `<div class="stat"><span>Updates applied</span><b>${bp.hist.length - 1}</b></div>` +
+    `<div class="stat"><span>P(dog)</span><b>${(C.p*100).toFixed(1)}%</b></div>` +
+    `<div class="stat"><span>Loss</span><b>${f3(C.L)}</b></div>`;
+  renderChart('bpChart');
+}
+document.querySelectorAll('.bpNext').forEach(b => b.onclick = bpNext);
+document.querySelectorAll('.bpBack').forEach(b => b.onclick = () => { bp.step = Math.max(0, bp.step - 1); dirty = true; });
+$('#bpSkip').onclick = () => { bp.step = BP_STEPS.length - 1; dirty = true; };
+$('#bpTrain').onclick = () => { for (let i = 0; i < 20; i++) bpApply(); bp.step = 0; dirty = true; };
+$('#bpRand').onclick = () => { for (const k of BP_KEYS) bp.P[k] = +(randn()*2).toFixed(2); bpResetHist(); bp.step = 0; dirty = true; };
+document.querySelectorAll('[data-ex]').forEach(b => b.onclick = () => {
+  const [e, sn, y] = b.dataset.ex.split(',').map(Number); bp.ex = { ears: e, snout: sn, y };
+  bpSync(); bpResetHist(); bp.step = 0; dirty = true;
+});
+$('#bpEars').oninput = e => { bp.ex.ears = +e.target.value; bpSync(); bpResetHist(); dirty = true; };
+$('#bpSnout').oninput = e => { bp.ex.snout = +e.target.value; bpSync(); bpResetHist(); dirty = true; };
+$('#bpY').onchange = e => { bp.ex.y = +e.target.value; bpResetHist(); dirty = true; };
+$('#bpLr').oninput = e => { bp.lr = +e.target.value; bpSync(); dirty = true; };
+
+// ---------------------------------------------------------------- lab: perceptron & XOR
+// A classic perceptron: ŷ = step(w₁x₁ + w₂x₂ + b), trained with the perceptron learning rule on the 4 corners of a logic gate.
+const GATES = { AND:[0,0,0,1], OR:[0,1,1,1], NAND:[1,1,1,0], XOR:[0,1,1,0] };
+const PC_X = [[0,0], [0,1], [1,0], [1,1]];
+const pc = { gate:'AND', ys:[...GATES.AND], lr:0.25, speed:4, running:false, acc:0, mode:'hand', xnet:null };
+const step01 = z => z > 0 ? 1 : 0;
+const pcZ = x => pc.w[0]*x[0] + pc.w[1]*x[1] + pc.b;
+const pcMistakes = () => PC_X.reduce((m, x, i) => m + (step01(pcZ(x)) !== pc.ys[i]), 0);
+function pcReset(){ pc.w = [+rand(-0.5, 0.5).toFixed(2), +rand(-0.5, 0.5).toFixed(2)]; pc.b = +rand(-0.5, 0.5).toFixed(2); pcRestartCount(); }
+function pcRestartCount(){ pc.idx = 0; pc.epoch = 0; pc.miss = 0; pc.last = null; pc.converged = pcMistakes() === 0; pc.hist = [{ epoch:0, mistakes: pcMistakes() }]; }
+function pcStep(){
+  const i = pc.idx, x = PC_X[i], y = pc.ys[i], z = pcZ(x), yh = step01(z), err = y - yh;
+  pc.last = { i, x, y, z, yh, err, before: { w:[...pc.w], b:pc.b }, lr: pc.lr };
+  if (err){ pc.w[0] += pc.lr*err*x[0]; pc.w[1] += pc.lr*err*x[1]; pc.b += pc.lr*err; pc.miss++; }
+  if (++pc.idx === 4){
+    pc.epoch++; pc.hist.push({ epoch: pc.epoch, mistakes: pc.miss });
+    pc.converged = pc.miss === 0; pc.miss = 0; pc.idx = 0;
+    if (pc.converged) setPcRunning(false);
+  }
+}
+function setPcRunning(v){ pc.running = v; pc.acc = 0; $('#pcPlay').textContent = v ? '❚❚ Pause' : '▶ Run'; }
+function pcSync(){
+  $('#pcLr').value = pc.lr; $('#pcSpeed').value = pc.speed;
+  $('#pcLrOut').textContent = pc.lr; $('#pcSpeedOut').textContent = pc.speed + ' examples / second';
+  document.querySelectorAll('[data-gate]').forEach(b => b.classList.toggle('on', b.dataset.gate === pc.gate));
+  document.querySelectorAll('[data-xmode]').forEach(b => b.classList.toggle('on', b.dataset.xmode === pc.mode));
+  $('#xorRetrain').hidden = pc.mode !== 'learned';
+}
+
+// XOR with a hidden layer: hand-built (OR + NAND -> AND) or learned by backprop (2 tanh hidden neurons)
+function xorTrain(){
+  let tries = 0, L;
+  do {
+    tries++;
+    const net = new MLP([2, 2, 2], 'tanh');
+    for (let e = 0; e < 4000; e++){ for (let i = 0; i < 4; i++){ net.forward(PC_X[i]); net.backward(GATES.XOR[i]); } net.apply(0.5, 4); }
+    L = 0; for (let i = 0; i < 4; i++) L -= Math.log(Math.max(net.forward(PC_X[i])[GATES.XOR[i]], 1e-12)); L /= 4;
+    pc.xnet = net;
+  } while (L > 0.05 && tries < 25);
+  pc.xtries = tries; pc.xloss = L;
+}
+function xorHidden(x){
+  if (pc.mode === 'hand') return [step01(x[0] + x[1] - 0.5), step01(-x[0] - x[1] + 1.5)];
+  pc.xnet.forward(x); return [pc.xnet.a[1][0], pc.xnet.a[1][1]];
+}
+function xorOutLine(){ // output neuron's line in hidden space: a*h1 + b*h2 + c = 0, positive side = 1
+  if (pc.mode === 'hand') return [1, 1, -1.5];
+  const W = pc.xnet.W[1], b = pc.xnet.b[1];
+  return [W[2] - W[0], W[3] - W[1], b[1] - b[0]];
+}
+const xorOutH = h => { const [a, b, c] = xorOutLine(); return step01(a*h[0] + b*h[1] + c); };
+const xorNetOut = x => xorOutH(xorHidden(x));
+
+// ---- square plots shared by this lab
+const SQ_PAD = { l:40, r:12, t:12, b:38 };
+function sqPlot(id, lo, hi, xl, yl){
+  const { x: g, w, h } = fit($('#' + id)), P = SQ_PAD, pw = w - P.l - P.r, ph = h - P.t - P.b;
+  g.clearRect(0, 0, w, h);
+  return { g, w, h, P, pw, ph, lo, hi, xl, yl, X: v => P.l + (v - lo)/(hi - lo)*pw, Y: v => P.t + (1 - (v - lo)/(hi - lo))*ph };
+}
+function sqShade(S, fn){
+  const R = 80, cw = S.pw/R, ch = S.ph/R, g = S.g;
+  g.fillStyle = T.surface; g.fillRect(S.P.l, S.P.t, S.pw, S.ph);
+  g.fillStyle = mixc(T.rgb.surface, T.rgb.seq, 0.24);
+  for (let i = 0; i < R; i++) for (let j = 0; j < R; j++){
+    const a = S.lo + (i + 0.5)/R*(S.hi - S.lo), b = S.hi - (j + 0.5)/R*(S.hi - S.lo);
+    if (fn(a, b)) g.fillRect(S.P.l + i*cw, S.P.t + j*ch, cw + 0.7, ch + 0.7);
+  }
+}
+function sqAxes(S, ticks){
+  const g = S.g;
+  g.strokeStyle = T.border; g.lineWidth = 1; g.strokeRect(S.P.l + .5, S.P.t + .5, S.pw, S.ph);
+  g.font = '11px system-ui';
+  for (const v of ticks){
+    g.globalAlpha = 0.6; g.beginPath();
+    g.moveTo(Math.round(S.X(v)) + .5, S.P.t); g.lineTo(Math.round(S.X(v)) + .5, S.P.t + S.ph);
+    g.moveTo(S.P.l, Math.round(S.Y(v)) + .5); g.lineTo(S.P.l + S.pw, Math.round(S.Y(v)) + .5); g.stroke(); g.globalAlpha = 1;
+    g.fillStyle = T.muted; g.textAlign = 'center'; g.textBaseline = 'top'; g.fillText(v, S.X(v), S.P.t + S.ph + 5);
+    g.textAlign = 'right'; g.textBaseline = 'middle'; g.fillText(v, S.P.l - 6, S.Y(v));
+  }
+  g.fillStyle = T['text-2']; g.font = '12px system-ui'; g.textAlign = 'center'; g.textBaseline = 'top';
+  g.fillText(S.xl, S.P.l + S.pw/2, S.P.t + S.ph + 20);
+  g.save(); g.translate(13, S.P.t + S.ph/2); g.rotate(-Math.PI/2); g.textBaseline = 'middle'; g.fillText(S.yl, 0, 0); g.restore();
+}
+function sqLine(S, a, b, c, label){ // the line a*x + b*y + c = 0
+  const { lo, hi } = S, raw = [];
+  if (Math.abs(b) > 1e-9) for (const x of [lo, hi]){ const y = -(a*x + c)/b; if (y >= lo && y <= hi) raw.push([x, y]); }
+  if (Math.abs(a) > 1e-9) for (const y of [lo, hi]){ const x = -(b*y + c)/a; if (x >= lo && x <= hi) raw.push([x, y]); }
+  let best = null, bd = 1e-6;
+  for (const p of raw) for (const q of raw){ const d = Math.hypot(p[0] - q[0], p[1] - q[1]); if (d > bd){ bd = d; best = [p, q]; } }
+  if (!best) return;
+  const p1 = [S.X(best[0][0]), S.Y(best[0][1])], p2 = [S.X(best[1][0]), S.Y(best[1][1])], g = S.g;
+  g.strokeStyle = T.text; g.lineWidth = 2; g.setLineDash([6, 4]);
+  g.beginPath(); g.moveTo(...p1); g.lineTo(...p2); g.stroke(); g.setLineDash([]);
+  if (label){
+    const nl = Math.hypot(a, b) || 1, nx = a/nl, ny = -b/nl, mx = p1[0]*0.8 + p2[0]*0.2, my = p1[1]*0.8 + p2[1]*0.2;
+    g.font = '600 12px system-ui'; g.fillStyle = T.text; g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.fillText(label, mx + nx*16, my + ny*16);
+  }
+}
+function sqPoints(S, pts){
+  const g = S.g, mid = (S.lo + S.hi)/2;
+  for (const p of pts){
+    const x = S.X(p.x), y = S.Y(p.y);
+    if (p.current){ g.strokeStyle = T.s2; g.lineWidth = 3; g.beginPath(); g.arc(x, y, 18, 0, Math.PI*2); g.stroke(); }
+    if (p.wrong){ g.strokeStyle = T.neg; g.lineWidth = 2.5; g.beginPath(); g.arc(x, y, 13, 0, Math.PI*2); g.stroke(); }
+    g.beginPath(); g.arc(x, y, 8, 0, Math.PI*2);
+    if (p.target){ g.fillStyle = T.text; g.fill(); } else { g.fillStyle = T.surface; g.fill(); g.strokeStyle = T.text; g.lineWidth = 2.5; g.stroke(); }
+    g.font = '12px system-ui'; g.fillStyle = T['text-2'];
+    let left = p.x <= mid; const tw = g.measureText(p.label).width;
+    if (!left && x + 20 + tw > S.w - 2) left = true; else if (left && x - 20 - tw < 2) left = false;
+    g.textAlign = left ? 'right' : 'left'; g.textBaseline = 'middle';
+    g.fillText(p.label, x + (left ? -20 : 20), y + (p.y <= mid ? 16 : -16));
+  }
+}
+
+function renderPC(){
+  pcSync();
+  // ---- input space with the perceptron's line
+  const S = sqPlot('pcPlot', -0.5, 1.5, 'x₁ →', 'x₂ →');
+  sqShade(S, (a, b) => pc.w[0]*a + pc.w[1]*b + pc.b > 0);
+  sqAxes(S, [0, 1]);
+  sqLine(S, pc.w[0], pc.w[1], pc.b, 'z = 0');
+  sqPoints(S, PC_X.map((x, i) => ({ x: x[0], y: x[1], label: `(${x[0]},${x[1]}) → ${pc.ys[i]}`, target: pc.ys[i],
+    wrong: step01(pcZ(x)) !== pc.ys[i], current: pc.last && pc.last.i === i })));
+
+  // ---- the perceptron diagram (shows the computation just made, with the weights it used)
+  const L = pc.last, ex = L ? L.x : PC_X[pc.idx], Wd = L ? L.before : { w: pc.w, b: pc.b };
+  const z = Wd.w[0]*ex[0] + Wd.w[1]*ex[1] + Wd.b, yh = step01(z);
+  { const { x: g, w, h } = fit($('#pcNet')); g.clearRect(0, 0, w, h);
+    const N = { x1:[w*0.14, h*0.2], x2:[w*0.14, h*0.5], one:[w*0.14, h*0.8], s:[w*0.5, h*0.5], st:[w*0.7, h*0.5], y:[w*0.87, h*0.5] }, R = 17;
+    g.strokeStyle = T.muted; g.lineWidth = 2;
+    for (const k of ['x1', 'x2', 'one']){ g.beginPath(); g.moveTo(...N[k]); g.lineTo(...N.s); g.stroke(); }
+    g.beginPath(); g.moveTo(...N.s); g.lineTo(...N.y); g.stroke();
+    g.font = '12px system-ui'; g.textAlign = 'center'; g.textBaseline = 'middle';
+    const lerp = (a, b, t) => [a[0] + (b[0] - a[0])*t, a[1] + (b[1] - a[1])*t];
+    [['x1', `w₁ = ${fmt(Wd.w[0])}`], ['x2', `w₂ = ${fmt(Wd.w[1])}`], ['one', `b = ${fmt(Wd.b)}`]].forEach(([k, t]) => { const p = lerp(N[k], N.s, 0.5); pill(g, p[0], p[1], [t], T.border); });
+    const node = (k, label, val) => {
+      const [x, y] = N[k]; g.beginPath(); g.arc(x, y, R, 0, Math.PI*2); g.fillStyle = T['surface-2']; g.fill(); g.strokeStyle = T.muted; g.lineWidth = 1.5; g.stroke();
+      g.fillStyle = T.text; g.font = '600 14px system-ui'; g.textAlign = 'center'; g.fillText(label, x, y);
+      if (val != null){ g.font = '12px system-ui'; g.fillStyle = T['text-2']; const below = k === 's' || k === 'y', half = g.measureText(val).width/2;
+        g.textAlign = below ? 'center' : 'right'; g.fillText(val, below ? clamp(x, half + 4, w - half - 4) : x - R - 6, below ? y + R + 14 : y); }
+    };
+    node('x1', 'x₁', String(ex[0])); node('x2', 'x₂', String(ex[1])); node('one', '1', 'bias');
+    node('s', 'Σ', `z = ${fmt(z)}`);
+    const [sx, sy] = N.st; g.fillStyle = T['surface-2']; g.strokeStyle = T.muted; g.lineWidth = 1.5;
+    g.beginPath(); g.roundRect(sx - 22, sy - 16, 44, 32, 6); g.fill(); g.stroke();
+    g.strokeStyle = T.text; g.lineWidth = 2; g.beginPath(); g.moveTo(sx - 14, sy + 8); g.lineTo(sx, sy + 8); g.lineTo(sx, sy - 8); g.lineTo(sx + 14, sy - 8); g.stroke();
+    g.fillStyle = T['text-2']; g.font = '12px system-ui'; g.fillText('step', sx, sy + 30);
+    node('y', 'ŷ', `ŷ = ${yh}${L ? ` (target ${L.y})` : ''}`);
+  }
+
+  // ---- what just happened
+  let m;
+  if (!L) m = `<p>Press <b>Next example</b> to feed (${PC_X[pc.idx].join(', ')}) into the perceptron. It goes through the 4 examples in order, again and again.</p>
+    <p>It adds up the weighted inputs, and its output is 1 only if the total z is above 0. The dashed line on the left is exactly where z = 0.</p>`;
+  else {
+    const B = L.before;
+    m = `<p>Example <b>(x₁, x₂) = (${L.x.join(', ')})</b>, target y = ${L.y}</p>
+      <div class="eq">z = w₁·x₁ + w₂·x₂ + b = ${fmtP(B.w[0])}·${L.x[0]} + ${fmtP(B.w[1])}·${L.x[1]} + ${fmtP(B.b)} = <b>${fmt(L.z)}</b><br>ŷ = step(z) = <b>${L.yh}</b> &nbsp;(1 only if z &gt; 0)</div>`;
+    if (L.err) m += `<p><b>Wrong</b> (error = y − ŷ = ${L.err > 0 ? '+1' : '−1'}), so the perceptron learning rule nudges the line toward getting this one right:</p>
+      <div class="eq">w₁ ← w₁ + η·error·x₁ = ${fmt(B.w[0])} + ${L.lr}×${L.err}×${L.x[0]} = <b>${fmt(B.w[0] + L.lr*L.err*L.x[0])}</b><br>w₂ ← w₂ + η·error·x₂ = ${fmt(B.w[1])} + ${L.lr}×${L.err}×${L.x[1]} = <b>${fmt(B.w[1] + L.lr*L.err*L.x[1])}</b><br>b &nbsp;← b + η·error = ${fmt(B.b)} + ${L.lr}×${L.err} = <b>${fmt(B.b + L.lr*L.err)}</b></div>`;
+    else m += `<p><b>Correct</b>, so nothing changes. A perceptron only learns from its mistakes.</p>`;
+    m += `<p class="cap">Next up: (${PC_X[pc.idx].join(', ')}).</p>`;
+  }
+  $('#pcMath').innerHTML = m;
+
+  const key = pc.ys.join(''), separable = key !== '0110' && key !== '1001';
+  $('#pcStatus').innerHTML = pc.converged && pc.epoch > 0 ? `✓ <b>Solved</b> after ${pc.epoch} pass${pc.epoch > 1 ? 'es' : ''}: a whole pass through all 4 examples with no mistakes.`
+    : pc.converged ? '✓ These starting weights already get all 4 right. Pick another problem or press New random weights.'
+    : !separable && pc.epoch >= 6 ? `✗ <b>${pc.epoch} passes and still making mistakes.</b> It never will, because no straight line separates these 1s from these 0s. Scroll down for the fix.`
+    : `Problem: <b>${pc.gate === 'custom' ? 'your own' : pc.gate}</b>. Filled dots should come out 1 and hollow dots 0.`;
+
+  let t = '<thead><tr><th>x₁</th><th>x₂</th><th>Target y</th><th>z = w₁x₁ + w₂x₂ + b</th><th>Prediction ŷ</th><th></th></tr></thead><tbody>';
+  PC_X.forEach((x, i) => { const zz = pcZ(x), p = step01(zz);
+    t += `<tr class="${i === pc.idx ? 'hlrow' : ''}"><td>${x[0]}</td><td>${x[1]}</td><td>${pc.ys[i]}</td><td>${fmt(zz)}</td><td>${p}</td><td>${p === pc.ys[i] ? '✓' : '<span style="color:var(--neg)">✗ wrong</span>'}</td></tr>`; });
+  $('#pcTable').innerHTML = t + '</tbody>';
+  $('#pcStats').innerHTML =
+    `<div class="stat"><span>Passes</span><b>${pc.epoch}</b></div>` +
+    `<div class="stat"><span>Mistakes, last pass</span><b>${pc.epoch ? pc.hist[pc.hist.length - 1].mistakes : '–'}</b></div>` +
+    `<div class="stat"><span>w₁, w₂</span><b>${fmt(pc.w[0])}, ${fmt(pc.w[1])}</b></div>` +
+    `<div class="stat"><span>b</span><b>${fmt(pc.b)}</b></div>`;
+  renderChart('pcChart');
+  renderXor();
+}
+
+function renderXor(){
+  const hand = pc.mode === 'hand';
+  if (!hand && !pc.xnet) xorTrain();
+  const S = sqPlot('xorIn', -0.5, 1.5, 'x₁ →', 'x₂ →');
+  sqShade(S, (a, b) => xorNetOut([a, b]) === 1);
+  sqAxes(S, [0, 1]);
+  if (hand){ sqLine(S, 1, 1, -0.5, 'h₁ (OR)'); sqLine(S, -1, -1, 1.5, 'h₂ (NAND)'); }
+  else { const W = pc.xnet.W[0], b = pc.xnet.b[0]; sqLine(S, W[0], W[1], b[0], 'h₁'); sqLine(S, W[2], W[3], b[1], 'h₂'); }
+  sqPoints(S, PC_X.map((x, i) => ({ x: x[0], y: x[1], label: `(${x[0]},${x[1]}) → ${GATES.XOR[i]}`, target: GATES.XOR[i], wrong: xorNetOut(x) !== GATES.XOR[i] })));
+
+  const lo = hand ? -0.5 : -1.3, hi = hand ? 1.5 : 1.3;
+  const S2 = sqPlot('xorHid', lo, hi, 'h₁ →', 'h₂ →');
+  sqShade(S2, (a, b) => xorOutH([a, b]) === 1);
+  sqAxes(S2, hand ? [0, 1] : [-1, 0, 1]);
+  sqLine(S2, ...xorOutLine(), 'output: z = 0');
+  const groups = []; // points that land (almost) on the same spot share one label
+  PC_X.forEach((x, i) => {
+    const hv = xorHidden(x);
+    let gp = groups.find(q => q.target === GATES.XOR[i] && Math.hypot(q.x - hv[0], q.y - hv[1]) < 0.06*(hi - lo));
+    if (!gp) groups.push(gp = { x: hv[0], y: hv[1], names: [], target: GATES.XOR[i] });
+    gp.names.push(`(${x[0]},${x[1]})`);
+  });
+  sqPoints(S2, groups.map(gp => ({ x: gp.x, y: gp.y, label: gp.names.join(' & ') + ' → ' + gp.target, target: gp.target, wrong: xorOutH([gp.x, gp.y]) !== gp.target })));
+
+  $('#xorExplain').innerHTML = hand ? `
+    <p><b>Why one line can't do it.</b> XOR's two 1s, (0,1) and (1,0), sit on opposite corners of the square, and the two 0s sit on the other two corners. Any straight line that puts both 1s on one side also catches at least one 0.</p>
+    <p><b>Two hidden neurons fix it.</b> Each is an ordinary perceptron drawing its own line on the left. h₁ = step(x₁ + x₂ − 0.5) fires for <i>x₁ OR x₂</i>, and h₂ = step(−x₁ − x₂ + 1.5) fires for <i>NOT (x₁ AND x₂)</i>. The output fires only when <i>both</i> fire: ŷ = step(h₁ + h₂ − 1.5). That leaves the shaded band between the two lines.</p>
+    <p><b>The key idea is on the right.</b> Plot each example at its hidden-neuron values (h₁, h₂) instead of (x₁, x₂). The points move: (0,1) and (1,0) both land on (1,1). Now a single straight line separates them, and the output neuron is just a perceptron working in this new space. Hidden layers <i>re-describe</i> the data until a simple line is enough.</p>`
+  : `
+    <p>Same shape, 2 hidden neurons and 1 output, but now nobody chose the weights. Backpropagation and gradient descent found them from a random start, using smooth tanh neurons instead of hard steps, so the hidden values are no longer just 0 or 1.</p>
+    <p>${pc.xloss > 0.05 ? `It failed to find a solution in ${pc.xtries} random starts. Press Retrain.`
+      : pc.xtries > 1 ? `It took <b>${pc.xtries} random starts</b>. ${pc.xtries - 1} got stuck in a <b>local minimum</b>, a dip in the loss landscape that isn't the bottom. With only 2 hidden neurons, XOR is known for this. More neurons make it much more reliable.`
+      : 'It worked on the first random start. Press <b>Retrain</b> a few times: some random starts get stuck in a <b>local minimum</b>, a dip in the loss landscape that isn\'t the bottom.'}</p>
+    <p>The lines it finds usually differ from the hand-built ones, but the trick is the same. On the right, the four points end up where one straight line can separate them.</p>`;
+}
+
+$('#pcPlay').onclick = () => setPcRunning(!pc.running);
+$('#pcStepBtn').onclick = () => { setPcRunning(false); pcStep(); dirty = true; };
+$('#pcRestart').onclick = () => { setPcRunning(false); pcReset(); dirty = true; };
+document.querySelectorAll('[data-gate]').forEach(b => b.onclick = () => { setPcRunning(false); pc.gate = b.dataset.gate; pc.ys = [...GATES[pc.gate]]; pcReset(); dirty = true; });
+document.querySelectorAll('[data-xmode]').forEach(b => b.onclick = () => { pc.mode = b.dataset.xmode; dirty = true; });
+$('#xorRetrain').onclick = () => { pc.xnet = null; dirty = true; };
+$('#pcLr').oninput = e => { pc.lr = +e.target.value; pcSync(); };
+$('#pcSpeed').oninput = e => { pc.speed = +e.target.value; pcSync(); };
+$('#pcPlot').addEventListener('click', ev => {
+  const r = ev.currentTarget.getBoundingClientRect(), P = SQ_PAD, pw = r.width - P.l - P.r, ph = r.height - P.t - P.b;
+  let best = -1, bd = 26;
+  PC_X.forEach((x, i) => {
+    const d = Math.hypot(ev.clientX - r.left - (P.l + (x[0] + 0.5)/2*pw), ev.clientY - r.top - (P.t + (1 - (x[1] + 0.5)/2)*ph));
+    if (d < bd){ bd = d; best = i; }
+  });
+  if (best < 0) return;
+  pc.ys[best] ^= 1;
+  pc.gate = Object.keys(GATES).find(k => GATES[k].every((v, i) => v === pc.ys[i])) || 'custom';
+  setPcRunning(false); pcRestartCount(); dirty = true;
+});
+
+// ---------------------------------------------------------------- main loop
+let lastT = 0;
+function loop(t){
+  const dt = Math.min(0.1, Math.max(0, (t - lastT)/1000 || 0)); lastT = t;
+  if (labs[tab] && running){ const lab = cur(); for (let i = 0; i < lab.cfg.speed && running; i++) trainBatch(lab); dirty = true; }
+  if (tab === 'pc' && pc.running){ pc.acc += dt*pc.speed; while (pc.acc >= 1 && pc.running){ pcStep(); pc.acc -= 1; } dirty = true; }
+  if (tab === 'gd' && gd.running){ gd.acc += dt*gd.speed; while (gd.acc >= 1 && gd.running){ gdStep(); gd.acc -= 1; } dirty = true; }
+  if (dirty){ dirty = false; render(); }
+  requestAnimationFrame(loop);
+}
+function setRunning(v){ running = v; $('#play').textContent = v ? '❚❚ Pause' : '▶ Train'; }
+
+// ---------------------------------------------------------------- controls
+const lrToSlider = lr => Math.round((Math.log10(lr) + 3)/3.5*100);
+const sliderToLr = v => +(10 ** (-3 + 3.5*v/100)).toPrecision(2);
+function outputs(){
+  const c = cur().cfg;
+  $('#lrOut').textContent = c.lr;
+  $('#speedOut').textContent = c.speed + ' batch' + (c.speed > 1 ? 'es' : '') + ' / frame';
+  $('#nOut').textContent = $('#nTrain').value;
+  $('#noiseOut').textContent = $('#noise').value + '%';
+}
+function syncControls(){
+  const lab = cur(), c = lab.cfg;
+  $('#hidden').value = c.hidden; $('#act').value = c.act; $('#lr').value = lrToSlider(c.lr);
+  $('#batch').value = c.batch; $('#decay').value = String(c.decay); $('#speed').value = c.speed; $('#noise').value = Math.round(c.noise*100);
+  const nt = $('#nTrain');
+  if (lab.kind === '2d'){ nt.min = 20; nt.max = 400; nt.step = 10; $('#dataset').value = c.dataset; }
+  else { nt.min = 50; nt.max = 1000; nt.step = 50; }
+  nt.value = c.nTrain; outputs();
+}
+const regen = () => { const lab = cur(); newData(lab); resetNet(lab); dirty = true; };
+$('#hidden').onchange = e => { cur().cfg.hidden = e.target.value; resetNet(cur()); dirty = true; };
+$('#act').onchange = e => { cur().cfg.act = e.target.value; resetNet(cur()); dirty = true; };
+$('#lr').oninput = e => { cur().cfg.lr = sliderToLr(+e.target.value); outputs(); dirty = true; };
+$('#batch').onchange = e => { cur().cfg.batch = +e.target.value; dirty = true; };
+$('#decay').onchange = e => { cur().cfg.decay = +e.target.value; dirty = true; };
+$('#speed').oninput = e => { cur().cfg.speed = +e.target.value; outputs(); };
+$('#noise').oninput = outputs; $('#nTrain').oninput = outputs;
+$('#noise').onchange = e => { cur().cfg.noise = +e.target.value/100; regen(); };
+$('#nTrain').onchange = e => { cur().cfg.nTrain = +e.target.value; regen(); };
+$('#dataset').onchange = e => { cur().cfg.dataset = e.target.value; regen(); };
+$('#play').onclick = () => setRunning(!running);
+$('#stepB').onclick = () => { setRunning(false); trainBatch(cur()); dirty = true; };
+$('#stepE').onclick = () => { setRunning(false); const lab = cur(), e = lab.epoch; let guard = 0; while (lab.epoch === e && !lab.diverged && guard++ < 10000) trainBatch(lab); dirty = true; };
+$('#resetW').onclick = () => { resetNet(cur()); dirty = true; };
+$('#newData').onclick = regen;
+$('#showLines').onchange = $('#showTest').onchange = () => { dirty = true; };
+function showTab(t){
+  setRunning(false); setGdRunning(false); setPcRunning(false); tab = t; document.body.dataset.tab = t;
+  document.querySelectorAll('.tabs button').forEach(x => x.classList.toggle('on', x.dataset.tab === t));
+  document.querySelectorAll('[data-only]').forEach(el => { el.hidden = !el.dataset.only.split(' ').includes(t); });
+  if (labs[t]) syncControls();
+  hideTip(); dirty = true;
+}
+document.querySelectorAll('.tabs button').forEach(b => b.onclick = () => showTab(b.dataset.tab));
+addEventListener('keydown', e => {
+  if (e.code === 'Space' && !['INPUT', 'SELECT', 'BUTTON', 'TEXTAREA'].includes(document.activeElement.tagName)){ e.preventDefault(); if (tab === 'pc') setPcRunning(!pc.running); else if (tab === 'gd') setGdRunning(!gd.running); else if (tab === 'bp') bpNext(); else setRunning(!running); }
+});
+addEventListener('resize', () => { dirty = true; });
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { readTokens(); gd.landImg = null; dirty = true; });
+
+// feature-space interaction
+const plot = $('#plot2d');
+function plotPoint(ev){
+  const r = plot.getBoundingClientRect(), pw = r.width - P2.l - P2.r, ph = r.height - P2.t - P2.b;
+  return { e: (ev.clientX - r.left - P2.l)/pw, s: 1 - (ev.clientY - r.top - P2.t)/ph, pw, ph };
+}
+plot.addEventListener('pointermove', ev => {
+  const lab = labs['2d'], { e, s, pw, ph } = plotPoint(ev);
+  if (e < 0 || e > 1 || s < 0 || s > 1){ hideTip(); return; }
+  let best = null, bd = 10;
+  for (const p of lab.train){ const d = Math.hypot((p.x[0]/2+.5 - e)*pw, (p.x[1]/2+.5 - s)*ph); if (d < bd){ bd = d; best = p; } }
+  lab.probe = best ? { x: Float32Array.from(best.x), y: best.y } : { x: Float32Array.of((e-.5)*2, (s-.5)*2), y: null };
+  const p = lab.net.forward(lab.probe.x), q = lab.probe.x;
+  showTip(ev, (best ? `<b>Training example: ${NAMES[best.y].toLowerCase()}</b><br>` : '') +
+    `ears ${(q[0]/2+.5).toFixed(2)}, snout ${(q[1]/2+.5).toFixed(2)}<br>Network: ${(p[0]*100).toFixed(0)}% cat, ${(p[1]*100).toFixed(0)}% dog`);
+  dirty = true;
+});
+plot.addEventListener('pointerleave', hideTip);
+plot.addEventListener('click', ev => {
+  const lab = labs['2d'], { e, s } = plotPoint(ev);
+  if (e < 0 || e > 1 || s < 0 || s > 1) return;
+  const y = +document.querySelector('input[name=addcls]:checked').value;
+  const pt = { x: Float32Array.of((e-.5)*2, (s-.5)*2), y };
+  lab.train.push(pt); lab.probe = { x: Float32Array.from(pt.x), y }; dirty = true;
+});
+
+// network hover
+$('#net').addEventListener('pointermove', ev => {
+  const lab = cur(), r = ev.currentTarget.getBoundingClientRect(), mx = ev.clientX - r.left, my = ev.clientY - r.top;
+  const hit = (lab.netHits || []).find(h => Math.hypot(h.x - mx, h.y - my) <= Math.max(h.r, 7));
+  if (!hit){ hideTip(); return; }
+  const net = lab.net; net.forward(lab.probe.x);
+  const z = net.z[hit.l][hit.j], a = net.a[hit.l][hit.j], name = neuronName(lab, hit.l, hit.j);
+  showTip(ev, hit.l === 0 ? `<b>Input: ${name}</b><br>value ${(a/2+.5).toFixed(2)} (centred: ${fmt(a)})`
+    : hit.l === net.L ? `<b>Output: ${name}</b><br>score z = ${fmt(z)}<br>softmax → p = ${(a*100).toFixed(1)}%`
+    : `<b>Hidden neuron ${name}</b><br>z = weighted sum + bias = ${fmt(z)}<br>${ACT[net.act].name}(z) = ${fmt(a)}`);
+});
+$('#net').addEventListener('pointerleave', hideTip);
+
+// chart hover
+for (const id of Object.keys(CHARTS)){
+  const c = $('#' + id);
+  c.addEventListener('pointermove', ev => {
+    const D = CHARTS[id](), r = c.getBoundingClientRect(), xMax = Math.max(5, D.H.length - 1);
+    const i = Math.round((ev.clientX - r.left - CP.l)/(r.width - CP.l - CP.r)*xMax);
+    if (i < 0 || i >= D.H.length){ chartHover[id] = null; hideTip(); dirty = true; return; }
+    chartHover[id] = i; const e = D.H[i];
+    const v = x => isFinite(x) ? (D.isAcc ? (x*100).toFixed(1) + '%' : x.toFixed(D.int ? 0 : 3)) : '–';
+    showTip(ev, `<b>${D.x[0].toUpperCase() + D.x.slice(1)} ${e.epoch}</b>` + D.keys.map(k => `<br>${k.n} ${v(e[k.k])}`).join(''));
+    dirty = true;
+  });
+  c.addEventListener('pointerleave', () => { chartHover[id] = null; hideTip(); dirty = true; });
+}
+
+// drawing pad
+const pad = $('#pad'); let drawing = false, erasing = false, eraserMode = false;
+function paint(ev){
+  const lab = labs.img, r = pad.getBoundingClientRect();
+  const fx = (ev.clientX - r.left)/r.width*S - 0.5, fy = (ev.clientY - r.top)/r.height*S - 0.5;
+  const sign = (erasing || eraserMode) ? -1 : 1;
+  for (let y = Math.floor(fy) - 1; y <= Math.ceil(fy) + 1; y++) for (let x = Math.floor(fx) - 1; x <= Math.ceil(fx) + 1; x++){
+    if (x < 0 || y < 0 || x >= S || y >= S) continue;
+    const d = Math.hypot(x - fx, y - fy), amt = Math.max(0, 1 - d/1.6)*0.55;
+    if (amt > 0) lab.probe.x[y*S+x] = clamp(lab.probe.x[y*S+x] + sign*amt, 0, 1);
+  }
+  lab.probe.y = null; dirty = true;
+}
+pad.addEventListener('contextmenu', e => e.preventDefault());
+pad.addEventListener('pointerdown', ev => { drawing = true; erasing = ev.button === 2; pad.setPointerCapture(ev.pointerId); paint(ev); });
+pad.addEventListener('pointermove', ev => { if (drawing) paint(ev); });
+pad.addEventListener('pointerup', () => { drawing = false; });
+$('#rndCat').onclick = () => { labs.img.probe = { x: genImage(0, labs.img.cfg.noise), y: 0 }; dirty = true; };
+$('#rndDog').onclick = () => { labs.img.probe = { x: genImage(1, labs.img.cfg.noise), y: 1 }; dirty = true; };
+$('#clearPad').onclick = () => { labs.img.probe = { x: new Float32Array(NPIX), y: null }; dirty = true; };
+$('#eraser').onclick = e => { eraserMode = !eraserMode; e.currentTarget.classList.toggle('on', eraserMode); };
+
+// ---------------------------------------------------------------- start
+readTokens();
+for (const lab of Object.values(labs)){ newData(lab); resetNet(lab); }
+gdNewData(); gdSyncControls();
+bpResetHist(); bpSync();
+pcReset();
+showTab('pc');
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
