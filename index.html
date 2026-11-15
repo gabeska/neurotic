@@ -116,6 +116,31 @@ table.grad th:nth-child(-n+2),table.grad td:nth-child(-n+2){text-align:left}
 table.grad th{color:var(--muted);font-weight:500;font-size:12px}
 table.grad tr.hlrow td{background:var(--surface-2)}
 kbd{font:11px ui-monospace,monospace;border:1px solid var(--border);border-radius:4px;padding:0 4px;background:var(--surface-2)}
+.steps{display:flex;flex-direction:column;gap:2px;margin-top:6px}
+.steps button{display:grid;grid-template-columns:62px 1fr;gap:6px;text-align:left;border:1px solid transparent;background:transparent;color:var(--text-2);padding:6px 8px;border-radius:8px;cursor:pointer}
+.steps button:hover{background:var(--surface-2)}
+.steps button.on{background:var(--surface-2);color:var(--text);border-color:var(--border);font-weight:600}
+.steps .yr{color:var(--muted);font-weight:400;font-variant-numeric:tabular-nums;font-size:12.5px}
+#evoCanvas{display:block;width:100%;height:380px}
+#evoSize{display:block;width:100%}
+.btn:disabled{opacity:.45;cursor:default}
+.never{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:4px 24px}
+.chips{display:flex;flex-wrap:wrap;gap:5px;min-height:96px;align-content:flex-start;font-size:15px}
+.chip{padding:3px 8px;border-radius:6px;background:var(--surface-2);border:1.5px solid transparent}
+.chip.gen{background:color-mix(in srgb, var(--accent) 16%, var(--surface))}
+.chip.ctx{border-color:var(--accent)}
+.chip.ghost{background:transparent;border-style:dashed;color:var(--muted)}
+.chip.ghost:not(.ctx){display:none}
+.tok{display:grid;grid-template-columns:88px 1fr 46px;gap:8px;align-items:center;width:100%;border:0;background:transparent;color:var(--text);padding:3px 4px;border-radius:6px;cursor:pointer;text-align:left}
+.tok:hover{background:var(--surface-2)}
+.tok .bar{position:relative}
+.tok .bar i{background:var(--accent)}
+.tok .bar u{position:absolute;top:0;bottom:0;width:2px;background:var(--text-2);margin-left:-1px}
+.tok b{text-align:right;font-variant-numeric:tabular-nums}
+.tok.cut{color:var(--muted)}
+#lmStrip{display:block;width:100%;height:40px;margin-top:10px}
+#lmMap{display:block;width:100%;height:360px}
+#lmCompare th,#lmCompare td{text-align:left;white-space:normal}
 @media (max-width:1000px){ .layout{grid-template-columns:minmax(0,1fr);padding:6px 16px 24px} .top{padding:16px 16px 8px} }
 @media (max-width:760px){ .row,.row.wide-left{grid-template-columns:minmax(0,1fr)} #net{height:320px} #bpNet{height:380px} }
 </style>
@@ -132,6 +157,8 @@ kbd{font:11px ui-monospace,monospace;border:1px solid var(--border);border-radiu
     <button data-tab="gd" role="tab">3 · Gradient descent</button>
     <button data-tab="bp" role="tab">4 · Backpropagation</button>
     <button data-tab="img" role="tab">5 · Pictures (20×20 pixels)</button>
+    <button data-tab="evo" role="tab">6 · Perceptron → LLM</button>
+    <button data-tab="lm" role="tab">7 · How an LLM writes</button>
   </nav>
 </header>
 
@@ -220,6 +247,43 @@ kbd{font:11px ui-monospace,monospace;border:1px solid var(--border);border-radiu
       </label>
       <div class="btnrow"><button class="btn" id="bpRand">Random weights</button></div>
       <p class="cap"><kbd>Space</kbd> = Next.</p>
+    </section>
+
+    <section class="card" data-only="evo">
+      <div class="btnrow">
+        <button class="btn" id="evoBack">◀ Back</button>
+        <button class="btn primary" id="evoNext">Next ▶</button>
+      </div>
+      <div id="evoList" class="steps"></div>
+      <p class="cap"><kbd>Space</kbd> = Next.</p>
+    </section>
+
+    <section class="card" data-only="lm">
+      <h3 style="margin-top:0">1 · Train the model</h3>
+      <div class="btnrow">
+        <button class="btn primary" id="lmPlay">▶ Train</button>
+        <button class="btn" id="lmEpoch">Train 1 epoch</button>
+        <button class="btn" id="lmReset">Reset</button>
+      </div>
+      <div class="stats" id="lmStats"></div>
+      <label class="ctl">Context window: words it can see
+        <select id="lmCtx">
+          <option value="1">1 word</option><option value="2">2 words</option><option value="3">3 words</option>
+          <option value="4">4 words</option><option value="5">5 words</option><option value="6">6 words</option>
+        </select>
+      </label>
+      <label class="ctl">Learning rate <output id="lmLrOut"></output>
+        <input type="range" id="lmLr" min="0.01" max="0.2" step="0.01">
+      </label>
+      <p class="cap">Changing the context window starts a fresh, untrained model.</p>
+      <h3>2 · Generate text</h3>
+      <label class="ctl">Temperature <output id="lmTempOut"></output>
+        <input type="range" id="lmTemp" min="0" max="2" step="0.05">
+      </label>
+      <label class="ctl">Top-k: only consider the k likeliest words
+        <select id="lmTopK"><option value="0">Off (any word)</option><option value="10">10</option><option value="3">3</option><option value="1">1 (always the top word)</option></select>
+      </label>
+      <p class="cap"><kbd>Space</kbd> adds the next word.</p>
     </section>
 
     <section class="card" data-only="2d img">
@@ -327,6 +391,20 @@ kbd{font:11px ui-monospace,monospace;border:1px solid var(--border);border-radiu
         <li><b>Overfitting.</b> Use 50 training images, 60% noise and 32-16 hidden. Training accuracy reaches 100% while test accuracy lags behind.</li>
         <li><b>Click any test picture</b> below to send it through the network.</li>
       </ol>
+      <ol data-only="evo" style="margin-top:10px">
+        <li><b>Seven steps, one neuron.</b> Every model here, up to a modern LLM, is built from the neuron of lab 1: a weighted sum plus a bias, then an activation function. What changed is how the neurons are wired, how much data they learn from, and how fast the computers are.</li>
+        <li><b>Each step fixes the previous step's weakness.</b> Read the "catch" at the end of each step, then press Next to see the fix.</li>
+        <li><b>Watch the weight counts.</b> The chart below uses a log scale. GPT-3 has about 60 billion times as many weights as the perceptron in lab 1.</li>
+        <li><b>On the attention step, click any word</b> to see which earlier words it pulls information from.</li>
+      </ol>
+      <ol data-only="lm" style="margin-top:10px">
+        <li><b>Before training,</b> press <i>Write a sentence</i>. Every word is about equally likely, so you get word salad.</li>
+        <li><b>Train for 5–10 epochs</b> and try again. It picks up grammar, and it learns that cats meow and dogs bark. Nobody wrote those rules. The only task was to guess the next word in about 600 example sentences.</li>
+        <li><b>Temperature.</b> At 0 it always takes the top word (greedy), so the same prompt always gives the same sentence. At 2 the odds flatten out and you get "the cat barks". Real chatbots usually run somewhere between 0.5 and 1.</li>
+        <li><b>The context window.</b> Start from "my cat sleeps on the". With 3 words of context the model only sees "sleeps on the", so it can't tell whether this is a cat or a dog. Switch to 5 words, retrain, and try again. LLMs use attention (lab 6) to see thousands of tokens.</li>
+        <li><b>Click a bar</b> to choose the next word yourself.</li>
+        <li><b>The word map</b> shows the model's embeddings. Train for 20+ epochs and words that are followed by the same things drift together: cat next to kitten, dog next to puppy, rug next to porch and floor.</li>
+      </ol>
     </section>
   </aside>
 
@@ -430,6 +508,93 @@ kbd{font:11px ui-monospace,monospace;border:1px solid var(--border);border-radiu
       <div class="cardhead"><h2>Loss on this animal after each update</h2></div>
       <canvas id="bpChart" class="chart"></canvas>
     </section>
+
+    <div class="row wide-left" data-only="evo">
+      <section class="card">
+        <div class="cardhead"><h2 id="evoTitle"></h2><span class="cap" id="evoYear"></span></div>
+        <canvas id="evoCanvas" aria-label="Diagram of the current step in the history of neural networks"></canvas>
+        <p class="cap" id="evoCap"></p>
+      </section>
+      <section class="card">
+        <div id="evoText" class="explain"></div>
+        <div class="btnrow" style="margin-top:12px">
+          <button class="btn" id="evoBack2">◀ Back</button>
+          <button class="btn primary" id="evoNext2">Next ▶</button>
+          <button class="btn" id="evoTry" hidden></button>
+        </div>
+      </section>
+    </div>
+    <section class="card" data-only="evo">
+      <div class="cardhead"><h2>How many weights?</h2><span class="cap">log scale: each gridline is 1,000× more</span></div>
+      <canvas id="evoSize" aria-label="Number of weights in each model, on a log scale"></canvas>
+      <p class="cap">Weights and biases are the numbers training adjusts, also called parameters. Highlighted bars belong to the current step. Most labs no longer publish the size of their newest models, but the largest are thought to have hundreds of billions to trillions of weights.</p>
+    </section>
+    <section class="card" data-only="evo">
+      <div class="cardhead"><h2>What never changed</h2></div>
+      <div class="never explain">
+        <p><b>The neuron.</b> Every circle in every diagram computes z = w₁x₁ + w₂x₂ + … + b and passes z through an activation function. An LLM has billions of these. Lab 1 has one.</p>
+        <p><b>The goal.</b> Make the loss small: a single number that measures how wrong the predictions are on the training data. For an LLM the loss is how surprised it was by each next word.</p>
+        <p><b>The learning method.</b> Backpropagation finds every weight's gradient (lab 4), and gradient descent nudges each weight downhill (lab 3). This is how GPT-3 was trained too, just across thousands of GPUs at once.</p>
+      </div>
+    </section>
+
+    <div class="row" data-only="lm">
+      <section class="card">
+        <div class="cardhead"><h2>The text so far</h2><span class="cap">outlined = what the model can see</span></div>
+        <div id="lmText" class="chips"></div>
+        <div class="btnrow" style="margin-top:12px">
+          <button class="btn primary" id="lmNext">Next word</button>
+          <button class="btn" id="lmSentence">Write a sentence</button>
+          <button class="btn" id="lmUndo">Undo</button>
+        </div>
+        <h3>Start again from</h3>
+        <div class="btnrow" id="lmPrompts"></div>
+        <p class="cap">Shaded words were written by the model. The rest came from you.</p>
+      </section>
+      <section class="card">
+        <div class="cardhead"><h2>What comes next?</h2>
+          <div class="legend">
+            <span><svg width="14" height="10"><rect width="14" height="10" rx="2" fill="var(--accent)"/></svg>chance it gets picked</span>
+            <span><svg width="6" height="12"><rect x="2" width="2" height="12" fill="var(--text-2)"/></svg>model's raw probability</span>
+          </div>
+        </div>
+        <div id="lmBars"></div>
+        <canvas id="lmStrip" aria-label="The probabilities laid end to end. Picking a word is like throwing a dart at this strip"></canvas>
+        <p class="cap" id="lmPickNote"></p>
+      </section>
+    </div>
+    <section class="card" data-only="lm">
+      <div class="cardhead"><h2>Under the hood: how the next word is chosen</h2></div>
+      <div id="lmHood" class="mono"></div>
+    </section>
+    <div class="row" data-only="lm">
+      <section class="card">
+        <div class="cardhead"><h2>Loss: how surprised it is by the next word</h2></div>
+        <canvas id="lmChart" class="chart"></canvas>
+        <p class="cap">Loss = −ln(probability given to the real next word), averaged over the training text. It can't reach 0. After "the cat likes", the training text has fish, milk and mice equally often, so even a perfect model can only give the right word one chance in three.</p>
+      </section>
+      <section class="card">
+        <div class="cardhead"><h2>Word map: the learned embeddings</h2>
+          <div class="legend">
+            <span><svg width="12" height="12"><circle cx="6" cy="6" r="4.5" fill="var(--cat)"/></svg>cat words</span>
+            <span><svg width="12" height="12"><circle cx="6" cy="6" r="4.5" fill="var(--dog)"/></svg>dog words</span>
+            <span><svg width="12" height="12"><circle cx="6" cy="6" r="4.5" fill="var(--muted)"/></svg>other</span>
+          </div>
+        </div>
+        <canvas id="lmMap" aria-label="Each word's embedding vector flattened to 2D"></canvas>
+        <p class="cap">Each word is stored as a list of 12 numbers, its embedding. This map flattens those 12 dimensions down to the 2 that vary most (PCA), so some words that look close are really far apart. A word ends up near other words that are followed by the same things: kitten near cat, puppy near dog, the dog's sleeping places near each other. The colours are for you only. The model was never told which words go with cats.</p>
+      </section>
+    </div>
+    <div class="row" data-only="lm">
+      <section class="card">
+        <div class="cardhead"><h2>This toy vs. a real LLM</h2></div>
+        <div class="tablewrap"><table class="grad" id="lmCompare"></table></div>
+      </section>
+      <section class="card">
+        <div class="cardhead"><h2>Some of the training text</h2><span class="cap" id="lmCorpusNote"></span></div>
+        <div id="lmCorpus" class="mono"></div>
+      </section>
+    </div>
 
     <div class="row" data-only="2d img">
       <section class="card" data-only="2d">
@@ -972,6 +1137,7 @@ const CHARTS = {
   gdChart:   () => ({ H: gd.hist, keys: [{ k:'loss', n:'Loss', c:'s1' }], isAcc: false, x: 'step' }),
   pcChart:   () => ({ H: pc.hist, keys: [{ k:'mistakes', n:'Mistakes', c:'s1' }], isAcc: false, int: true, x: 'pass' }),
   bpChart:   () => ({ H: bp.hist, keys: [{ k:'loss', n:'Loss', c:'s1' }], isAcc: false, x: 'update' }),
+  lmChart:   () => ({ H: lm.hist, keys: [{ k:'loss', n:'Loss', c:'s1' }], isAcc: false, x: 'epoch' }),
 };
 function renderChart(id){
   const { H, keys, isAcc, int, x: xName } = CHARTS[id]();
@@ -1093,6 +1259,8 @@ function render(){
   if (tab === 'pc') return renderPC();
   if (tab === 'gd') return renderGD();
   if (tab === 'bp') return renderBP();
+  if (tab === 'evo') return renderEvo();
+  if (tab === 'lm') return renderLM();
   const lab = cur();
   if (lab.kind === '2d') render2d(lab);
   else { renderPad(lab); renderTiles(lab); updateGallery(lab); }
@@ -1726,6 +1894,551 @@ $('#pcPlot').addEventListener('click', ev => {
   setPcRunning(false); pcRestartCount(); dirty = true;
 });
 
+// ---------------------------------------------------------------- lab: perceptron → LLM
+const EVO = [
+  { year:'1958', name:'The perceptron', lab:['pc', 'Try it in lab 1'],
+    cap:'One neuron: multiply each input by its weight, add them up with the bias, and output 1 if the total is above 0.',
+    html:`<p><b>The idea.</b> Frank Rosenblatt's perceptron is a single artificial neuron. It learns from examples: every time it gets one wrong, it nudges its weights toward the right answer. His Mark I Perceptron machine looked at the world through a 20×20 grid of light sensors, the same size as the pictures in lab 5.</p>
+      <p><b>What it could do.</b> Any yes/no problem where one straight line (or flat plane) separates the two answers.</p>
+      <p><b>The catch.</b> Many problems can't be split by one line. XOR is the classic example. Minsky and Papert's 1969 book <i>Perceptrons</i> made this limit famous, and interest in neural networks faded for more than a decade.</p>
+      <p><b>Next:</b> stack neurons in layers.</p>` },
+  { year:'1986', name:'Layers + backpropagation', lab:['2d', 'Try it in lab 2'],
+    cap:'Each circle is a perceptron-style neuron with a smooth activation such as sigmoid or tanh. Blue = positive weight, red = negative.',
+    html:`<p><b>The idea.</b> Put hidden layers between the input and the output. Each hidden neuron draws its own line, and the next layer combines them into curves and shapes. Rumelhart, Hinton and Williams showed that <b>backpropagation</b> can train every weight, including the hidden ones, by sending the error backwards through the network. The idea had appeared earlier, but their 1986 paper made it widely used.</p>
+      <p><b>What it could do.</b> Solve XOR and learn curved boundaries. In theory, a network with one big enough hidden layer can approximate any smooth function. This is the universal approximation theorem (1989).</p>
+      <p><b>The catch.</b> Every input has its own weights. For a picture, a pattern learned in one corner has to be learned again in every other corner. Deep stacks of layers were also hard to train with the data and computers of the time.</p>
+      <p><b>Next:</b> build the structure of images into the network.</p>` },
+  { year:'1989–2012', name:'Deep convolutional networks', lab:['img', 'Try pictures in lab 5'],
+    cap:'A 3×3 filter (9 weights) slides across the image. At each spot it computes one weighted sum and fills in one cell of the feature map. Blue = strong match, red = opposite.',
+    html:`<p><b>The idea.</b> A <b>convolution</b> slides one small filter of weights over the whole image, so the same 9 weights detect the same pattern everywhere. Stacking many such layers builds up meaning: edges, then corners and textures, then ears and eyes, then whole objects. Yann LeCun's convolutional networks read handwritten digits on bank checks in the 1990s.</p>
+      <p><b>The breakthrough.</b> In 2012 AlexNet won the ImageNet contest by a wide margin. It had 60 million weights and learned from 1.2 million labelled photos on gaming graphics cards (GPUs). Big data, GPUs and deep networks together started the deep learning boom.</p>
+      <p><b>The catch.</b> A convolutional network expects a fixed-size grid. Language is a sequence of any length, and the order of the words matters.</p>
+      <p><b>Next:</b> networks with memory.</p>` },
+  { year:'1990–2016', name:'Recurrent networks', lab:['lm', 'See the context problem in lab 7'],
+    cap:'One network reads the words one at a time, passing its memory (a hidden-state vector) along to the next step. The purple bar shows how much of "cat" is still remembered. This is an illustration, not a trained model.',
+    html:`<p><b>The idea.</b> Read text one word at a time. A recurrent network feeds its own hidden state back in as an extra input, so it carries a memory of what it has read so far. It uses the same weights at every step. Elman's networks (1990) and the LSTM (Hochreiter and Schmidhuber, 1997) are the best-known designs.</p>
+      <p><b>What it could do.</b> Speech recognition, and translation from 2014 on. Google Translate switched to LSTM networks in 2016.</p>
+      <p><b>The catch.</b> The memory fades. Gradients have to travel back through every step, and they shrink along the way, just like the vanishing gradients in lab 4. The network also has to finish word 99 before it can start word 100, which makes it slow to train on GPUs that are built to do many things at once.</p>
+      <p><b>Next:</b> better word representations, then a way for every word to look at every other word directly.</p>` },
+  { year:'2013', name:'Word embeddings', lab:['lm', 'See learned embeddings in lab 7'],
+    cap:'An illustration of word vectors squashed into 2D. Real embeddings have hundreds of dimensions. The two arrows point the same way: the change from "man" to "woman" matches the change from "king" to "queen".',
+    html:`<p><b>The idea.</b> Turn each word into a list of numbers, its <b>embedding</b>, and learn those numbers by predicting which words appear near each other. Mikolov and colleagues' word2vec (2013) showed that this puts words used in similar ways close together. Directions carry meaning too: king − man + woman lands near queen.</p>
+      <p><b>Why it matters.</b> This is the first step of every LLM. Each token is looked up in a table of embeddings before anything else happens. The toy model in lab 7 learns its own.</p>
+      <p><b>The catch.</b> Each word gets one fixed vector, whatever the context. "Bank" in "river bank" and "bank account" looks the same to the model.</p>
+      <p><b>Next:</b> vectors that change with context.</p>` },
+  { year:'2017', name:'Attention & the Transformer', lab:null,
+    cap:'Click any word. The arcs show how much it attends to each earlier word. The weights are made up for illustration. A real model learns its own and has many attention "heads", each tracking a different pattern.',
+    html:`<p><b>The idea.</b> With <b>attention</b>, each word asks a question of every other word. In practice it compares two learned vectors with a dot product. The scores go through a softmax, and the word takes a weighted average of what the others contain. "It" can pull in "cat" directly, however far back it is, so nothing has to survive a long chain of memory.</p>
+      <p><b>The Transformer</b> (Vaswani and colleagues at Google, "Attention Is All You Need", 2017) is built from blocks of attention followed by a small multi-layer network (step 2) applied to each word. Every word is processed at the same time, so GPUs can be used fully and models can learn from far more text.</p>
+      <p><b>So what?</b> Embeddings now change with context. After a few blocks, the vector for "bank" in "river bank" is different from the one in "bank account".</p>
+      <p><b>Next:</b> make it very big, and train it on a huge amount of text to predict the next word.</p>` },
+  { year:'2018–today', name:'Large language models', lab:['lm', 'Generate text in lab 7'],
+    cap:'An LLM: tokens → embeddings → a tall stack of identical Transformer blocks → a probability for every token in the vocabulary. Pick one, add it to the text, and repeat. The probabilities are made up for illustration.',
+    html:`<p><b>The recipe.</b> Take a stack of Transformer blocks and train it on one task: <b>predict the next token</b> (a word or piece of a word) across a huge amount of text. GPT-3 (2020) had 96 blocks and 175 billion weights, and was trained on about 300 billion tokens. It used the same loss, backpropagation and gradient descent as labs 3 and 4.</p>
+      <p><b>To write,</b> it predicts a probability for every possible next token, picks one, adds it to the text, and repeats. Lab 7 lets you do this step by step.</p>
+      <p><b>From predictor to assistant.</b> Further training on example conversations and on human ratings of answers (reinforcement learning from human feedback) turned next-word predictors into assistants like ChatGPT (2022).</p>
+      <p><b>What scale brought.</b> Grammar, facts, translation, coding and step-by-step reasoning were never programmed in. They turned out to help with predicting the next word. LLMs can still state false things confidently, because they produce likely text, not checked facts.</p>` },
+];
+const EVO_SIZES = [
+  { name:'Perceptron (lab 1)',     n:3,      st:[0] },
+  { name:'Lab 2 net, 4 hidden',    n:22,     st:[1] },
+  { name:'Lab 5 picture net',      n:6450,   st:[1, 2] },
+  { name:'Lab 7 word model',       n:() => lm.net.nParams, st:[3, 4] },
+  { name:'LeNet-5 (1998)',         n:6e4,    st:[2] },
+  { name:'AlexNet (2012)',         n:6e7,    st:[2] },
+  { name:'Transformer (2017)',     n:6.5e7,  st:[5] },
+  { name:'GPT-2 (2019)',           n:1.5e9,  st:[6] },
+  { name:'GPT-3 (2020)',           n:1.75e11, st:[6] },
+];
+const evo = { i:0, att:7, hits:[] };
+const ATT_WORDS = ['the', 'cat', 'sat', 'on', 'the', 'mat', 'because', 'it', 'was', 'tired'];
+const ATT = [ // illustrative attention weights over earlier words (each row sums to 1 after normalising)
+  [1], [.4, .6], [.1, .6, .3], [0, .1, .5, .4], [0, 0, .1, .5, .4], [0, 0, .1, .35, .25, .3],
+  [0, .2, .3, 0, 0, .2, .3], [.05, .55, 0, 0, .05, .15, .05, .15], [0, .2, 0, 0, 0, 0, 0, .5, .3], [0, .4, 0, 0, 0, 0, 0, .3, .2, .1],
+].map(r => { const s = r.reduce((a, b) => a + b, 0); return r.map(v => v/s); });
+const fmtBig = n => n >= 1e9 ? +(n/1e9).toPrecision(3) + ' billion' : n >= 1e6 ? +(n/1e6).toPrecision(3) + ' million' : Math.round(n).toLocaleString('en-US');
+function srand(seed){ let s = seed; return () => (s = (s*16807) % 2147483647)/2147483647; }
+
+function evText(g, s, x, y, o = {}){
+  g.font = o.font || '12px system-ui'; g.fillStyle = o.col || T['text-2'];
+  g.textAlign = o.align || 'center'; g.textBaseline = o.base || 'middle'; g.fillText(s, x, y);
+}
+function evNode(g, x, y, r, fill, label){
+  g.beginPath(); g.arc(x, y, r, 0, Math.PI*2); g.fillStyle = fill; g.fill(); g.strokeStyle = T.muted; g.lineWidth = 1; g.stroke();
+  if (label) evText(g, label, x, y, { col: T.text, font: '600 13px system-ui' });
+}
+function evBox(g, x, y, w, h, fill, stroke = T.border){
+  g.beginPath(); g.roundRect(x, y, w, h, 8); g.fillStyle = fill; g.fill(); g.strokeStyle = stroke; g.lineWidth = 1; g.stroke();
+}
+const tint = (k, t) => mixc(T.rgb.surface, T.rgb[k], t);
+
+const EVO_DRAW = [
+  function perceptron(g, w, h){
+    const ins = [['x₁', 0.28, 'w₁'], ['x₂', 0.5, 'w₂'], ['1', 0.72, 'b']], sx = w*0.48, sy = h*0.5, r = Math.min(34, w*0.07);
+    for (const [lab, fy, wl] of ins){
+      const x = w*0.12, y = h*fy;
+      g.strokeStyle = T.muted; g.lineWidth = 2; g.beginPath(); g.moveTo(x, y); g.lineTo(sx, sy); g.stroke();
+      evText(g, wl, (x + sx)/2, (y + sy)/2 - 12, { col: T.text, font: 'italic 13px system-ui' });
+      evNode(g, x, y, 18, T['surface-2'], lab);
+    }
+    const bx = w*0.66, bw = Math.min(70, w*0.13), bh = 50;
+    g.strokeStyle = T.muted; g.lineWidth = 2; g.beginPath(); g.moveTo(sx, sy); g.lineTo(w*0.88, sy); g.stroke();
+    evNode(g, sx, sy, r, tint('seq', 0.18), 'Σ');
+    evBox(g, bx - bw/2, sy - bh/2, bw, bh, T.surface, T.muted);
+    g.strokeStyle = T.text; g.lineWidth = 2; g.beginPath();
+    g.moveTo(bx - bw*0.35, sy + 12); g.lineTo(bx, sy + 12); g.lineTo(bx, sy - 12); g.lineTo(bx + bw*0.35, sy - 12); g.stroke();
+    evText(g, 'step', bx, sy + bh/2 + 12, { col: T.muted, font: '11px system-ui' });
+    evText(g, 'z = w₁x₁ + w₂x₂ + b', sx, sy + r + 16, { col: T.muted, font: '11px system-ui' });
+    evNode(g, w*0.88, sy, 18, tint('seq', 0.3), 'ŷ');
+    evText(g, '0 or 1', w*0.88, sy + 32, { col: T.muted, font: '11px system-ui' });
+  },
+  function mlp(g, w, h){
+    const sizes = [3, 5, 5, 2], names = ['input', 'hidden 1', 'hidden 2', 'output'], rnd = srand(7), pos = [];
+    sizes.forEach((n, l) => {
+      const x = w*(0.14 + 0.72*l/(sizes.length - 1)), sp = Math.min(56, (h - 70)/n);
+      pos.push(Array.from({ length: n }, (_, i) => [x, h/2 - 12 + (i - (n - 1)/2)*sp]));
+    });
+    for (let l = 0; l < sizes.length - 1; l++) for (const a of pos[l]) for (const b of pos[l+1]){
+      const v = rnd()*2 - 1; g.strokeStyle = v > 0 ? T.pos : T.neg; g.globalAlpha = 0.15 + 0.6*Math.abs(v); g.lineWidth = 0.5 + 2.5*Math.abs(v);
+      g.beginPath(); g.moveTo(...a); g.lineTo(...b); g.stroke();
+    }
+    g.globalAlpha = 1;
+    pos.forEach((col, l) => {
+      col.forEach(([x, y], i) => evNode(g, x, y, 13, l === 0 ? T['surface-2'] : l === 3 ? tint(i ? 'dog' : 'cat', 0.55) : tint(rnd() > 0.4 ? 'pos' : 'neg', 0.2 + 0.5*rnd())));
+      evText(g, names[l], col[0][0], h - 14, { col: T.muted, font: '11px system-ui' });
+    });
+    evText(g, 'cat', pos[3][0][0] + 30, pos[3][0][1], { col: T.text, align: 'left' });
+    evText(g, 'dog', pos[3][1][0] + 30, pos[3][1][1], { col: T.text, align: 'left' });
+  },
+  function conv(g, w, h, t){
+    const IMG = ['........', '.#....#.', '.##..##.', '.######.', '.#.##.#.', '.######.', '..####..', '........'].map(r => [...r].map(c => c === '#' ? 1 : 0));
+    const F = [[-1, -1, -1], [0, 0, 0], [1, 1, 1]];
+    const fm = []; let mx = 1;
+    for (let y = 0; y < 6; y++) for (let x = 0; x < 6; x++){ let s = 0; for (let j = 0; j < 3; j++) for (let i = 0; i < 3; i++) s += F[j][i]*IMG[y+j][x+i]; fm.push(s); mx = Math.max(mx, Math.abs(s)); }
+    const c = Math.min((w - 40)/22, (h - 70)/8), ix = 12, iy = (h - 8*c)/2 - 6;
+    const fx = ix + 8*c + 2.2*c, fy = iy + 0.5*c, mxp = fx + 3*c + 2.6*c, my = iy + c;
+    const k = Math.floor(t/0.45) % 40, cur = Math.min(k, 35), kx = cur % 6, ky = cur/6 | 0;
+    for (let y = 0; y < 8; y++) for (let x = 0; x < 8; x++){
+      g.fillStyle = IMG[y][x] ? T.text : T['surface-2']; g.fillRect(ix + x*c, iy + y*c, c - 1, c - 1);
+    }
+    g.strokeStyle = T.s2; g.lineWidth = 3; g.strokeRect(ix + kx*c - 1, iy + ky*c - 1, 3*c + 1, 3*c + 1);
+    for (let j = 0; j < 3; j++) for (let i = 0; i < 3; i++){
+      const v = F[j][i]; g.fillStyle = v ? tint(v > 0 ? 'pos' : 'neg', 0.45) : T['surface-2'];
+      g.fillRect(fx + i*c, fy + j*c, c - 1, c - 1);
+      evText(g, v > 0 ? '+1' : v < 0 ? '−1' : '0', fx + i*c + c/2, fy + j*c + c/2, { col: T.text, font: '11px system-ui' });
+    }
+    for (let i = 0; i < 36; i++){
+      const x = i % 6, y = i/6 | 0, v = fm[i]/mx;
+      g.fillStyle = i <= k ? mixc(T.rgb['surface-2'], v >= 0 ? T.rgb.pos : T.rgb.neg, Math.abs(v)) : T.surface;
+      g.fillRect(mxp + x*c, my + y*c, c - 1, c - 1);
+      g.strokeStyle = T.border; g.lineWidth = 1; g.strokeRect(mxp + x*c + .5, my + y*c + .5, c - 2, c - 2);
+    }
+    g.strokeStyle = T.s2; g.lineWidth = 3; g.strokeRect(mxp + kx*c - 1, my + ky*c - 1, c + 1, c + 1);
+    g.globalAlpha = 0.5; g.lineWidth = 1.5;
+    g.beginPath(); g.moveTo(ix + (kx + 3)*c, iy + ky*c + 1.5*c); g.lineTo(mxp + kx*c, my + ky*c + c/2); g.stroke(); g.globalAlpha = 1;
+    evText(g, 'image', ix + 4*c, iy + 8*c + 16, { col: T.muted, font: '11px system-ui' });
+    evText(g, 'filter (9 weights)', fx + 1.5*c, fy + 3*c + 16, { col: T.muted, font: '11px system-ui' });
+    evText(g, 'feature map: "top edge here?"', mxp + 3*c, my + 6*c + 16, { col: T.muted, font: '11px system-ui' });
+    evText(g, '→ more layers → cat', mxp + 3*c, my + 6*c + 36, { col: T.text, font: '12px system-ui' });
+  },
+  function rnn(g, w, h){
+    const words = ['the', 'cat', 'sat', 'on', 'the'], mem = [0, 1, 0.55, 0.3, 0.16], n = words.length;
+    const gap = w/(n + 0.6), bw = Math.min(70, gap*0.62), bh = 64, by = h*0.42 - bh/2;
+    for (let i = 0; i < n; i++){
+      const cx = gap*(i + 0.8), x = cx - bw/2;
+      evBox(g, x, by, bw, bh, tint('seq', 0.1), T.muted);
+      evText(g, 'h' + '₁₂₃₄₅'[i], cx, by + 14, { col: T.text, font: '600 12px system-ui' });
+      const mh = (bh - 30)*mem[i]; g.fillStyle = T.cat; g.fillRect(cx - 6, by + bh - 6 - mh, 12, mh);
+      g.strokeStyle = T.border; g.strokeRect(cx - 6.5, by + 23.5, 13, bh - 29);
+      arrow(g, cx, h*0.82 - 12, cx, by + bh + 4, T.muted);
+      evBox(g, cx - 30, h*0.82 - 12, 60, 26, T['surface-2']);
+      evText(g, words[i], cx, h*0.82 + 1, { col: T.text });
+      if (i < n - 1) arrow(g, x + bw + 2, by + bh/2, x + gap - 4, by + bh/2, T.s1);
+    }
+    evText(g, 'memory of "cat"', gap*1.8 + bw/2 + 8, by - 14, { col: T.cat, align: 'left', font: '11px system-ui' });
+    evText(g, 'same weights at every step · memory flows left to right', w/2, by - 40, { col: T.muted, font: '11px system-ui' });
+  },
+  function embed(g, w, h){
+    const P = { l: 30, r: 20, t: 16, b: 30 }, pw = w - P.l - P.r, ph = h - P.t - P.b;
+    const X = v => P.l + v*pw, Y = v => P.t + (1 - v)*ph;
+    const pts = [['cat', .16, .72, 'cat'], ['kitten', .1, .82, 'cat'], ['dog', .3, .66, 'dog'], ['puppy', .26, .78, 'dog'],
+      ['fish', .12, .3, 0], ['milk', .2, .2, 0], ['bone', .3, .34, 0], ['ran', .62, .2, 0], ['walked', .74, .26, 0], ['sat', .68, .1, 0],
+      ['man', .55, .52, 0], ['woman', .55, .74, 0], ['king', .82, .5, 0], ['queen', .82, .72, 0]];
+    g.strokeStyle = T.border; g.lineWidth = 1; g.strokeRect(P.l + .5, P.t + .5, pw, ph);
+    evText(g, 'dimension 1 (of ~300)', P.l + pw/2, h - 12, { col: T.muted, font: '11px system-ui' });
+    g.save(); g.translate(12, P.t + ph/2); g.rotate(-Math.PI/2); evText(g, 'dimension 2', 0, 0, { col: T.muted, font: '11px system-ui' }); g.restore();
+    for (const [a, b] of [['man', 'woman'], ['king', 'queen']]){
+      const p = pts.find(q => q[0] === a), q = pts.find(q => q[0] === b);
+      arrow(g, X(p[1]), Y(p[2]) - 8, X(q[1]), Y(q[2]) + 10, T.s2);
+    }
+    for (const [name, x, y, k] of pts){
+      g.beginPath(); g.arc(X(x), Y(y), 4.5, 0, Math.PI*2); g.fillStyle = k ? T[k] : T.muted; g.fill();
+      evText(g, name, X(x) + 8, Y(y), { col: T.text, align: 'left' });
+    }
+    evText(g, 'animals', X(.2), Y(.92), { col: T.muted, font: 'italic 11px system-ui' });
+    evText(g, 'food', X(.2), Y(.42), { col: T.muted, font: 'italic 11px system-ui' });
+    evText(g, 'actions', X(.7), Y(.34), { col: T.muted, font: 'italic 11px system-ui' });
+  },
+  function attention(g, w, h){
+    let fs = 14; g.font = fs + 'px system-ui';
+    const pad = () => Math.round(fs*0.9), gapW = () => Math.round(fs*0.55);
+    const total = () => ATT_WORDS.reduce((s, t) => s + g.measureText(t).width + pad() + gapW(), -gapW());
+    while (total() > w - 8 && fs > 8){ fs--; g.font = fs + 'px system-ui'; }
+    let x = (w - total())/2; const y = h*0.62, bh = fs + 12, boxes = [];
+    for (const t of ATT_WORDS){ const bw = g.measureText(t).width + pad(); boxes.push({ x, w: bw, cx: x + bw/2 }); x += bw + gapW(); }
+    const sel = evo.att, row = ATT[sel];
+    row.forEach((a, j) => {
+      if (a < 0.01) return;
+      const x1 = boxes[sel].cx, x2 = boxes[j].cx, top = y - bh/2 - 4;
+      if (j === sel){ g.strokeStyle = T.s1; g.globalAlpha = .3 + .7*a; g.lineWidth = 1 + 10*a; g.beginPath(); g.arc(x1, top - 14, 12, 0.15*Math.PI, 0.85*Math.PI, true); g.stroke(); g.globalAlpha = 1;
+        evText(g, Math.round(a*100) + '%', x1, top - 36, { col: T.text, font: '600 11px system-ui' }); return; }
+      const lift = Math.min(h*0.55, 30 + Math.abs(x1 - x2)*0.45);
+      g.strokeStyle = T.s1; g.globalAlpha = .25 + .75*a; g.lineWidth = 1 + 10*a;
+      g.beginPath(); g.moveTo(x1, top); g.quadraticCurveTo((x1 + x2)/2, top - lift*2 + 10, x2, top); g.stroke(); g.globalAlpha = 1;
+      if (a >= 0.08) evText(g, Math.round(a*100) + '%', (x1 + x2)/2, top - lift + 2, { col: T.text, font: '600 11px system-ui' });
+    });
+    evo.hits = [];
+    boxes.forEach((b, i) => {
+      evBox(g, b.x, y - bh/2, b.w, bh, i === sel ? tint('s1', 0.25) : T['surface-2'], i === sel ? T.s1 : T.border);
+      evText(g, ATT_WORDS[i], b.cx, y + 1, { col: T.text, font: (i === sel ? '600 ' : '') + fs + 'px system-ui' });
+      evo.hits.push({ x0: b.x, x1: b.x + b.w, y0: y - bh/2 - 4, y1: y + bh/2 + 4, i });
+    });
+    evText(g, `"${ATT_WORDS[sel]}" mixes in what the words it attends to contain,`, w/2, y + bh/2 + 26, { col: T.muted, font: '11px system-ui' });
+    evText(g, 'then each word goes through a small multi-layer network.', w/2, y + bh/2 + 44, { col: T.muted, font: '11px system-ui' });
+    evText(g, 'Every block repeats both steps.', w/2, y + bh/2 + 62, { col: T.muted, font: '11px system-ui' });
+  },
+  function llm(g, w, h){
+    const words = ['the', 'cat', 'sat', 'on', 'the'], sw = w*0.6, n = words.length, cw = sw/n;
+    const ty = h - 38, ey = ty - 46;
+    words.forEach((t, i) => {
+      const cx = cw*(i + 0.5) + 6;
+      evBox(g, cx - cw*0.4, ty - 12, cw*0.8, 24, T['surface-2']); evText(g, t, cx, ty, { col: T.text });
+      const rnd = srand(i*31 + 5);
+      for (let k = 0; k < 6; k++){ const v = rnd()*2 - 1; g.fillStyle = tint(v > 0 ? 'pos' : 'neg', 0.25 + 0.6*Math.abs(v)); g.fillRect(cx - 6, ey - 18 + k*6, 12, 5); }
+    });
+    evText(g, 'tokens → embeddings', sw/2 + 6, ty + 20, { col: T.muted, font: '11px system-ui' });
+    const blocks = ['block 1 · attention + MLP', 'block 2 · attention + MLP', '⋮', 'block 96 · attention + MLP'];
+    const top = 18, bot = ey - 30, bh = (bot - top)/blocks.length;
+    blocks.forEach((b, i) => {
+      const y = bot - (i + 1)*bh;
+      if (b === '⋮') evText(g, b, sw/2 + 6, y + bh/2, { col: T.muted, font: '18px system-ui' });
+      else { evBox(g, 6, y + 4, sw, bh - 8, tint('seq', 0.1 + 0.05*i), T.muted); evText(g, b, sw/2 + 6, y + bh/2, { col: T.text }); }
+    });
+    const ox = sw + 30, ow = w - ox - 10, preds = [['mat', .38], ['floor', .14], ['sofa', .11], ['bed', .08], ['windowsill', .05], ['…', 0]];
+    arrow(g, sw + 8, top + bh/2, ox - 4, top + bh/2, T.muted);
+    evText(g, 'next token?', ox, top + 2, { col: T.muted, align: 'left', font: '11px system-ui' });
+    const lw = Math.min(74, ow*0.45);
+    preds.forEach(([t, p], i) => {
+      const y = top + 22 + i*22;
+      evText(g, t, ox, y, { col: T.text, align: 'left' });
+      if (p){ g.fillStyle = T.s1; g.fillRect(ox + lw, y - 6, (ow - lw - 34)*p/0.38, 12);
+        evText(g, Math.round(p*100) + '%', ox + lw + (ow - lw - 34)*p/0.38 + 4, y, { align: 'left', font: '11px system-ui' }); }
+    });
+    evText(g, 'pick one → append → repeat', ox, top + 22 + preds.length*22 + 6, { col: T.s2, align: 'left', font: '600 12px system-ui' });
+  },
+];
+
+function renderEvo(){
+  const st = EVO[evo.i];
+  $('#evoTitle').textContent = `${evo.i + 1} · ${st.name}`;
+  $('#evoYear').textContent = st.year;
+  $('#evoCap').textContent = st.cap;
+  $('#evoText').innerHTML = st.html;
+  for (const id of ['#evoBack', '#evoBack2']) $(id).disabled = evo.i === 0;
+  for (const id of ['#evoNext', '#evoNext2']) $(id).disabled = evo.i === EVO.length - 1;
+  const tryB = $('#evoTry'); tryB.hidden = !st.lab; if (st.lab) tryB.textContent = st.lab[1] + ' →';
+  [...$('#evoList').children].forEach((b, i) => b.classList.toggle('on', i === evo.i));
+  const cv = $('#evoCanvas'); cv.style.cursor = evo.i === 5 ? 'pointer' : 'default';
+  const { x: g, w, h } = fit(cv);
+  g.clearRect(0, 0, w, h);
+  EVO_DRAW[evo.i](g, w, h, performance.now()/1000);
+  renderEvoSize();
+}
+function renderEvoSize(){
+  const c = $('#evoSize'), rowH = 26; c.style.height = (EVO_SIZES.length*rowH + 30) + 'px';
+  const { x: g, w, h } = fit(c);
+  g.clearRect(0, 0, w, h);
+  const narrow = w < 520, lw = narrow ? 128 : 170, vw = narrow ? 84 : 110, x0 = lw, pw = w - lw - vw, MAX = 12;
+  const X = n => x0 + pw*Math.log10(Math.max(1, n))/MAX;
+  g.font = '11px system-ui'; g.textBaseline = 'top'; g.textAlign = 'center';
+  [[0, '1'], [3, '1 thousand'], [6, '1 million'], [9, '1 billion'], [12, '1 trillion']].forEach(([e, s]) => {
+    const x = Math.round(x0 + pw*e/MAX) + .5;
+    g.strokeStyle = T.border; g.lineWidth = 1; g.beginPath(); g.moveTo(x, 0); g.lineTo(x, h - 20); g.stroke();
+    g.fillStyle = T.muted; g.textAlign = e === 0 ? 'left' : e === 12 ? 'right' : 'center'; g.fillText(narrow && e % 6 ? '' : s, x, h - 14);
+  });
+  EVO_SIZES.forEach((e, i) => {
+    const n = typeof e.n === 'function' ? e.n() : e.n, on = e.st.includes(evo.i), y = i*rowH + 4;
+    g.fillStyle = on ? T.text : T['text-2']; g.font = (on ? '600 ' : '') + (narrow ? '11px' : '12.5px') + ' system-ui';
+    g.textAlign = 'left'; g.textBaseline = 'middle'; g.fillText(e.name, 0, y + rowH/2 - 2);
+    g.fillStyle = on ? T.s1 : mixc(T.rgb.surface, T.rgb.muted, 0.35);
+    g.beginPath(); g.roundRect(x0, y + 4, Math.max(3, X(n) - x0), rowH - 12, 3); g.fill();
+    g.fillStyle = on ? T.text : T.muted; g.font = '11.5px system-ui'; g.fillText(fmtBig(n), X(n) + 6, y + rowH/2 - 2);
+  });
+}
+function evoGo(i){ evo.i = clamp(i, 0, EVO.length - 1); dirty = true; }
+EVO.forEach((st, i) => {
+  const b = document.createElement('button');
+  b.innerHTML = `<span class="yr">${st.year.replace('–today', '–')}</span><span>${st.name}</span>`;
+  b.onclick = () => evoGo(i); $('#evoList').appendChild(b);
+});
+for (const id of ['#evoBack', '#evoBack2']) $(id).onclick = () => evoGo(evo.i - 1);
+for (const id of ['#evoNext', '#evoNext2']) $(id).onclick = () => evoGo(evo.i + 1);
+$('#evoTry').onclick = () => { const l = EVO[evo.i].lab; if (l) { showTab(l[0]); scrollTo(0, 0); } };
+$('#evoCanvas').addEventListener('click', ev => {
+  if (evo.i !== 5) return;
+  const r = ev.currentTarget.getBoundingClientRect(), mx = ev.clientX - r.left, my = ev.clientY - r.top;
+  const hit = evo.hits.find(b => mx >= b.x0 && mx <= b.x1 && my >= b.y0 && my <= b.y1);
+  if (hit){ evo.att = hit.i; dirty = true; }
+});
+
+// ---------------------------------------------------------------- lab: how an LLM writes
+// A tiny neural language model (Bengio-style): embeddings of the last n words → one tanh layer → softmax over the vocabulary.
+class TinyLM {
+  constructor(V, n, D = 12, H = 64){
+    this.V = V; this.n = n; this.D = D; this.H = H; const I = n*D; this.I = I;
+    const r = (len, std) => { const a = new Float32Array(len); for (let i = 0; i < len; i++) a[i] = randn()*std; return a; };
+    this.E = r(V*D, 0.5); this.W1 = r(H*I, 1/Math.sqrt(I)); this.b1 = new Float32Array(H);
+    this.W2 = r(V*H, 1/Math.sqrt(H)); this.b2 = new Float32Array(V);
+    this.x = new Float32Array(I); this.h = new Float32Array(H); this.logits = new Float32Array(V); this.p = new Float32Array(V);
+    this.dh = new Float32Array(H); this.dx = new Float32Array(I);
+  }
+  get nParams(){ return this.E.length + this.W1.length + this.b1.length + this.W2.length + this.b2.length; }
+  forward(ctx){
+    const { D, H, I, V, x, h, logits, p, E, W1, b1, W2, b2 } = this;
+    for (let k = 0; k < this.n; k++) for (let d = 0; d < D; d++) x[k*D+d] = E[ctx[k]*D+d];
+    for (let j = 0; j < H; j++){ let s = b1[j]; const o = j*I; for (let i = 0; i < I; i++) s += W1[o+i]*x[i]; h[j] = Math.tanh(s); }
+    let m = -Infinity;
+    for (let v = 0; v < V; v++){ let s = b2[v]; const o = v*H; for (let j = 0; j < H; j++) s += W2[o+j]*h[j]; logits[v] = s; if (s > m) m = s; }
+    let z = 0; for (let v = 0; v < V; v++){ p[v] = Math.exp(logits[v] - m); z += p[v]; }
+    for (let v = 0; v < V; v++) p[v] /= z;
+    return p;
+  }
+  // One step of stochastic gradient descent on one (context → next word) example. Returns the loss.
+  train(ctx, y, lr){
+    const p = this.forward(ctx), loss = -Math.log(Math.max(p[y], 1e-12));
+    const { D, H, I, V, x, h, dh, dx, E, W1, b1, W2, b2 } = this;
+    dh.fill(0);
+    for (let v = 0; v < V; v++){ const g = p[v] - (v === y ? 1 : 0), o = v*H; for (let j = 0; j < H; j++){ dh[j] += W2[o+j]*g; W2[o+j] -= lr*g*h[j]; } b2[v] -= lr*g; }
+    dx.fill(0);
+    for (let j = 0; j < H; j++){ const g = dh[j]*(1 - h[j]*h[j]), o = j*I; for (let i = 0; i < I; i++){ dx[i] += W1[o+i]*g; W1[o+i] -= lr*g*x[i]; } b1[j] -= lr*g; }
+    for (let k = 0; k < this.n; k++){ const t = ctx[k]; for (let d = 0; d < D; d++) E[t*D+d] -= lr*dx[k*D+d]; }
+    return loss;
+  }
+}
+const pick = a => a[Math.random()*a.length | 0];
+const LM_KINDS = {
+  cat: { subj:['cat', 'kitten'], sound:['meows', 'purrs'], food:['fish', 'milk', 'mice'], chase:['mouse', 'bird', 'string'], place:['sofa', 'windowsill', 'keyboard'], adj:['fluffy', 'curious', 'sleepy'], habit:['licks its paws', 'climbs the tree'] },
+  dog: { subj:['dog', 'puppy'], sound:['barks', 'growls'], food:['bones', 'meat', 'biscuits'], chase:['ball', 'cat', 'stick'], place:['rug', 'porch', 'floor'], adj:['muddy', 'loyal', 'happy'], habit:['wags its tail', 'digs a hole'] },
+};
+function lmSentence(){
+  const kind = Math.random() < 0.5 ? 'cat' : 'dog', K = LM_KINDS[kind], S = pick(['the', 'a', 'my']) + ' ' + pick(K.subj);
+  switch (Math.random()*7 | 0){
+    case 0: return `${S} ${pick(K.sound)} .`;
+    case 1: return `${S} likes ${pick(K.food)} .`;
+    case 2: return `${S} chases the ${pick(K.chase)} .`;
+    case 3: return `${S} sleeps on the ${pick(K.place)} .`;
+    case 4: return `${S} is ${pick(K.adj)} .`;
+    case 5: return `${S} ${pick(K.habit)} .`;
+    default: return kind === 'dog' ? 'when the dog barks the cat hides .' : 'when the cat hisses the dog runs .';
+  }
+}
+const LM_PROMPTS = ['', 'the cat', 'the dog', 'my puppy likes', 'my cat sleeps on the', 'a kitten chases the', 'when the'];
+const lm = { n:3, lr:0.05, temp:0.8, topk:0, running:false, auto:false, genAcc:0, text:[], last:null, hist:[] };
+function lmBuildCorpus(){
+  lm.sents = []; for (let i = 0; i < 600; i++) lm.sents.push(lmSentence());
+  const words = new Set(['.']);
+  for (const s of lm.sents) for (const t of s.split(' ')) words.add(t);
+  for (const K of Object.values(LM_KINDS)) for (const list of Object.values(K)) for (const s of list) for (const t of s.split(' ')) words.add(t);
+  lm.vocab = [...words]; lm.id = Object.fromEntries(lm.vocab.map((t, i) => [t, i]));
+  lm.ids = ('. ' + lm.sents.join(' ')).split(' ').map(t => lm.id[t]);
+  const stop = new Set(['the', 'a', 'my', 'its']), cls = {};
+  for (const [k, K] of Object.entries(LM_KINDS)) for (const [f, list] of Object.entries(K)) for (const s of list) for (const t of s.split(' '))
+    if (!stop.has(t) && !(k === 'dog' && f === 'chase' && t === 'cat')) cls[t] = k;
+  lm.cls = cls;
+}
+const lmCtxAt = i => { const c = []; for (let k = lm.n; k >= 1; k--) c.push(lm.ids[Math.max(0, i - k)]); return c; };
+function lmEvalLoss(){ let L = 0; for (let i = 1; i < lm.ids.length; i++){ const p = lm.net.forward(lmCtxAt(i)); L -= Math.log(Math.max(p[lm.ids[i]], 1e-12)); } return L/(lm.ids.length - 1); }
+function lmReset(){
+  lm.net = new TinyLM(lm.vocab.length, lm.n);
+  lm.epoch = 0; lm.pos = 0; lm.sum = 0; lm.cnt = 0; lm.pcs = null; lm.diverged = false;
+  lm.order = shuffle([...Array(lm.ids.length - 1).keys()].map(i => i + 1));
+  lm.hist = [{ epoch: 0, loss: lmEvalLoss() }];
+}
+function lmTrain(count){
+  for (let c = 0; c < count; c++){
+    const i = lm.order[lm.pos++];
+    lm.sum += lm.net.train(lmCtxAt(i), lm.ids[i], lm.lr); lm.cnt++;
+    if (lm.pos >= lm.order.length){
+      lm.epoch++; lm.hist.push({ epoch: lm.epoch, loss: lm.sum/lm.cnt });
+      lm.pos = 0; lm.sum = 0; lm.cnt = 0; shuffle(lm.order);
+      if (!isFinite(lm.hist[lm.hist.length - 1].loss)){ lm.diverged = true; setLmRunning(false); }
+      return true;
+    }
+  }
+  return false;
+}
+function setLmRunning(v){ lm.running = v; $('#lmPlay').textContent = v ? '❚❚ Pause' : '▶ Train'; }
+function setLmAuto(v){ lm.auto = v; lm.genAcc = 0; lm.autoCount = 0; $('#lmSentence').textContent = v ? '■ Stop' : 'Write a sentence'; }
+function lmTextCtx(){
+  const all = [lm.id['.'], ...lm.text.map(t => t.w)];
+  const c = all.slice(-lm.n); while (c.length < lm.n) c.unshift(lm.id['.']);
+  return c;
+}
+function lmDist(){
+  const net = lm.net, ctx = lmTextCtx(), p = net.forward(ctx), V = p.length;
+  const raw = Float32Array.from(p), lg = Float32Array.from(net.logits);
+  const order = [...Array(V).keys()].sort((a, b) => lg[b] - lg[a]);
+  const k = lm.topk || V, keep = new Uint8Array(V); for (let i = 0; i < Math.min(k, V); i++) keep[order[i]] = 1;
+  const adj = new Float32Array(V);
+  if (lm.temp < 0.01) adj[order[0]] = 1;
+  else { const m = lg[order[0]]; let s = 0; for (let v = 0; v < V; v++) if (keep[v]){ adj[v] = Math.exp((lg[v] - m)/lm.temp); s += adj[v]; } for (let v = 0; v < V; v++) adj[v] /= s; }
+  return { raw, adj, lg, order, ctx, keep };
+}
+function lmPick(choice){
+  const d = lmDist();
+  if (choice == null){
+    const r = Math.random(); let acc = 0, v = d.order[0];
+    for (const u of d.order){ if (d.adj[u] <= 0) continue; acc += d.adj[u]; v = u; if (r < acc) break; }
+    lm.last = { v, r, p: d.adj[v], manual: false };
+    lm.text.push({ w: v, gen: true });
+  } else { lm.last = { v: choice, p: d.raw[choice], manual: true }; lm.text.push({ w: choice, gen: false }); }
+  dirty = true;
+  return lm.last.v;
+}
+function lmSetPrompt(s){ setLmAuto(false); lm.text = s ? s.split(' ').map(t => ({ w: lm.id[t], gen: false })) : []; lm.last = null; dirty = true; }
+const lmWord = v => lm.vocab[v] === '.' ? '. (end)' : lm.vocab[v];
+const esc = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;');
+
+function renderLM(){
+  const net = lm.net, d = lmDist(), V = lm.vocab.length;
+  // text so far
+  const all = lm.text, nCtx = lm.n, ghosts = Math.max(0, nCtx - all.length);
+  let html = '';
+  for (let i = 0; i < Math.min(ghosts, nCtx); i++) html += `<span class="chip ghost ctx" title="Start of text">·</span>`;
+  all.forEach((t, i) => { const inCtx = i >= all.length - nCtx; html += `<span class="chip${t.gen ? ' gen' : ''}${inCtx ? ' ctx' : ''}">${esc(lm.vocab[t.w])}</span>`; });
+  $('#lmText').innerHTML = html;
+  // probability bars
+  const top = d.order.slice(0, 10);
+  $('#lmBars').innerHTML = top.map(v => `<button class="tok${d.adj[v] < 1e-9 ? ' cut' : ''}" data-v="${v}" title="Model's raw probability ${(d.raw[v]*100).toFixed(1)}%. Click to choose this word.">` +
+    `<span>${esc(lmWord(v))}</span><div class="bar"><i style="width:${d.adj[v]*100}%"></i><u style="left:${d.raw[v]*100}%"></u></div><b>${(d.adj[v]*100).toFixed(d.adj[v] < 0.1 ? 1 : 0)}%</b></button>`).join('') +
+    `<p class="cap" style="margin:4px 0 0">${V - 10} less likely words not shown${lm.temp < 0.01 ? ' · temperature 0: always the top word' : lm.topk ? ` · top-${lm.topk}: every word below the top ${lm.topk} gets 0%` : ''}</p>`;
+  document.querySelectorAll('#lmBars .tok').forEach(b => b.onclick = () => { setLmAuto(false); lmPick(+b.dataset.v); });
+  // strip
+  const { x: g, w, h } = fit($('#lmStrip'));
+  g.clearRect(0, 0, w, h);
+  let x = 0, k = 0;
+  for (const v of d.order){
+    const sw = d.adj[v]*w; if (sw <= 0) continue;
+    g.fillStyle = mixc(T.rgb.surface, T.rgb.s1, k++ % 2 ? 0.45 : 0.8); g.fillRect(x, 0, sw, h - 14);
+    if (sw > 34){ g.fillStyle = T.text; g.font = '11px system-ui'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(lm.vocab[v], x + sw/2, (h - 14)/2, sw - 4); }
+    x += sw;
+  }
+  g.fillStyle = T.muted; g.font = '10.5px system-ui'; g.textBaseline = 'bottom'; g.textAlign = 'left'; g.fillText('0', 0, h); g.textAlign = 'right'; g.fillText('1', w, h);
+  g.textAlign = 'center'; g.fillText('random number r between 0 and 1 picks the word under it', w/2, h);
+  const L = lm.last;
+  $('#lmPickNote').innerHTML = !L ? 'Picking a word works like throwing a dart at this strip. Wider segments get hit more often.'
+    : L.manual ? `You chose <b>${esc(lmWord(L.v))}</b> yourself. The model gave it ${(L.p*100).toFixed(1)}%.`
+    : `Last pick: r = ${L.r.toFixed(3)} landed on <b>${esc(lmWord(L.v))}</b>, which had a ${(L.p*100).toFixed(1)}% chance.`;
+  // under the hood
+  net.forward(d.ctx);
+  const vec = (arr, o, n, show = 4) => '[' + Array.from({ length: show }, (_, i) => fmt(arr[o + i])).join(', ') + ', …]' + ` <span style="color:var(--muted)">(${n} numbers)</span>`;
+  const A = ['<h4>1 · Text → tokens → numbers</h4>',
+    `The model sees only the last ${lm.n} token${lm.n > 1 ? 's' : ''}: ${d.ctx.map(v => `<span class="hl">${esc(lm.vocab[v])}</span>`).join(' ')} → token ids [${d.ctx.join(', ')}]`,
+    `(a "." stands for the start or end of a sentence)`,
+    '<h4>2 · Look up each token\'s embedding</h4>',
+    ...d.ctx.map((v, k) => `&nbsp;&nbsp;${esc(lm.vocab[v]).padEnd(10, ' ').replace(/ /g, '&nbsp;')} → ${vec(net.x, k*net.D, net.D)}`),
+    `Joined into one list of ${net.I} numbers.`,
+    '<h4>3 · Hidden layer: 64 tanh neurons</h4>',
+    `Each one computes z = Σ weight × input + bias, then tanh(z), exactly like lab 2. h = ${vec(net.h, 0, net.H, 5)}`];
+  const tz = lm.temp < 0.01 ? null : lm.temp, show = d.order.slice(0, 4);
+  const B = ['<h4>4 · Output layer: one score (logit) for every word</h4>',
+    `${V} scores, one per word in the vocabulary. The highest: ${show.map(v => `${esc(lm.vocab[v])} <span class="hl">${fmt(d.lg[v])}</span>`).join(', ')}`,
+    `<h4>5 · Temperature${lm.topk ? ' and top-k' : ''}, then softmax</h4>`,
+    tz ? `Divide each score by T = ${tz.toFixed(2)}: ${show.slice(0, 2).map(v => `${esc(lm.vocab[v])} ${fmt(d.lg[v])} ÷ ${tz.toFixed(2)} = ${fmt(d.lg[v]/tz)}`).join(', ')}` : 'T = 0: skip the randomness and take the highest score (greedy decoding).',
+    lm.topk ? `Top-k = ${lm.topk}: throw away every word except the ${lm.topk} highest scores.` : '',
+    tz ? `Softmax: p = e^score ÷ (sum of e^score over all words) → ${show.slice(0, 3).map(v => `${esc(lm.vocab[v])} <span class="hl">${(d.adj[v]*100).toFixed(1)}%</span>`).join(', ')}` : '',
+    'T < 1 sharpens the odds toward the top words, and T > 1 flattens them.',
+    '<h4>6 · Pick, append, repeat</h4>',
+    'Draw a random number, take the word under it on the strip above, add it to the text, slide the window along by one, and run steps 1–5 again. An LLM writes this way, one token at a time.'].filter(Boolean);
+  $('#lmHood').innerHTML = `<div class="hoodgrid"><div>${A.join('<br>')}</div><div>${B.join('<br>')}</div></div>`
+    .replace(/<br><h4>/g, '<h4>').replace(/<\/h4><br>/g, '</h4>');
+  // stats, chart, map
+  const lastLoss = lm.hist[lm.hist.length - 1].loss;
+  $('#lmStats').innerHTML =
+    `<div class="stat"><span>Epochs</span><b>${lm.epoch}${lm.running ? ` <small style="font-size:11px;color:var(--muted)">+${Math.round(lm.pos/lm.order.length*100)}%</small>` : ''}</b></div>` +
+    `<div class="stat"><span>Loss</span><b>${isFinite(lastLoss) ? lastLoss.toFixed(2) : '–'}</b></div>` +
+    `<div class="stat"><span>Vocabulary</span><b>${V} words</b></div>` +
+    `<div class="stat"><span>Weights</span><b>${net.nParams.toLocaleString('en-US')}</b></div>` +
+    (lm.diverged ? '<div class="warnmsg">⚠ The loss blew up. Lower the learning rate and press Reset.</div>' : '');
+  renderChart('lmChart');
+  renderLmMap();
+  $('#lmCompare').innerHTML = `<thead><tr><th></th><th>This toy</th><th>GPT-3 (2020)</th></tr></thead><tbody>
+    <tr><td>Vocabulary</td><td>${V} whole words</td><td>50,257 tokens (words and pieces of words)</td></tr>
+    <tr><td>Context window</td><td>${lm.n} word${lm.n > 1 ? 's' : ''}</td><td>2,048 tokens (newer models: hundreds of thousands)</td></tr>
+    <tr><td>Embedding size</td><td>${net.D} numbers</td><td>12,288 numbers</td></tr>
+    <tr><td>Layers</td><td>1 hidden layer</td><td>96 Transformer blocks with attention</td></tr>
+    <tr><td>Weights</td><td>${net.nParams.toLocaleString('en-US')}</td><td>175,000,000,000</td></tr>
+    <tr><td>Training text</td><td>${(lm.ids.length - 1).toLocaleString('en-US')} tokens</td><td>~300,000,000,000 tokens</td></tr>
+    <tr><td>Training time</td><td>seconds in your browser</td><td>weeks on thousands of GPUs</td></tr>
+    <tr><td>Generation loop</td><td colspan="2" style="text-align:center">the same: predict → pick → append → repeat</td></tr></tbody>`;
+  if (!lm.corpusShown){ lm.corpusShown = true;
+    $('#lmCorpus').innerHTML = lm.sents.slice(0, 14).map(esc).join('<br>') + '<br>…';
+    $('#lmCorpusNote').textContent = `${lm.sents.length} sentences, made up from a small grammar`; }
+}
+function renderLmMap(){
+  const { E, V, D } = lm.net, mean = new Float64Array(D);
+  for (let v = 0; v < V; v++) for (let d = 0; d < D; d++) mean[d] += E[v*D+d]/V;
+  const C = Array.from({ length: D }, () => new Float64Array(D));
+  for (let v = 0; v < V; v++) for (let a = 0; a < D; a++){ const xa = E[v*D+a] - mean[a]; for (let b = 0; b < D; b++) C[a][b] += xa*(E[v*D+b] - mean[b]); }
+  const pcs = [];
+  for (let c = 0; c < 2; c++){ // power iteration, keeping each axis orthogonal to the ones before it
+    let q = lm.pcs ? Float64Array.from(lm.pcs[c]) : Float64Array.from({ length: D }, () => Math.random() - 0.5);
+    for (let it = 0; it < 60; it++){
+      const u = new Float64Array(D);
+      for (let a = 0; a < D; a++){ let s = 0; for (let b = 0; b < D; b++) s += C[a][b]*q[b]; u[a] = s; }
+      for (const p of pcs){ let dt = 0; for (let a = 0; a < D; a++) dt += u[a]*p[a]; for (let a = 0; a < D; a++) u[a] -= dt*p[a]; }
+      const nrm = Math.hypot(...u) || 1; for (let a = 0; a < D; a++) u[a] /= nrm; q = u;
+    }
+    if (lm.pcs){ let dt = 0; for (let a = 0; a < D; a++) dt += q[a]*lm.pcs[c][a]; if (dt < 0) for (let a = 0; a < D; a++) q[a] = -q[a]; }
+    pcs.push(q);
+  }
+  lm.pcs = pcs;
+  const pts = [];
+  for (let v = 0; v < V; v++){ let x = 0, y = 0; for (let d = 0; d < D; d++){ const e = E[v*D+d] - mean[d]; x += e*pcs[0][d]; y += e*pcs[1][d]; } pts.push([x, y]); }
+  const { x: g, w, h } = fit($('#lmMap'));
+  g.clearRect(0, 0, w, h);
+  // scale to the 5th–95th percentile so a few outlying words don't squash the rest; outliers are pinned to the edge
+  const pct = (arr, q) => { const a = [...arr].sort((m, n) => m - n); return a[Math.round(q*(a.length - 1))]; };
+  const xs = pts.map(p => p[0]), ys = pts.map(p => p[1]);
+  const x0 = pct(xs, 0.05), x1 = pct(xs, 0.95), y0 = pct(ys, 0.05), y1 = pct(ys, 0.95);
+  const P = { l: 14, r: 76, t: 14, b: 14 };
+  const X = x => P.l + clamp((x - x0)/((x1 - x0) || 1), -0.04, 1.04)*(w - P.l - P.r)/1.08 + 0.04*(w - P.l - P.r)/1.08;
+  const Y = y => P.t + clamp((y1 - y)/((y1 - y0) || 1), -0.04, 1.04)*(h - P.t - P.b)/1.08 + 0.04*(h - P.t - P.b)/1.08;
+  g.strokeStyle = T.border; g.strokeRect(.5, .5, w - 1, h - 1);
+  g.font = '12px system-ui'; g.textBaseline = 'middle'; g.textAlign = 'left';
+  pts.forEach(([x, y], v) => {
+    const k = lm.cls[lm.vocab[v]], col = k ? T[k] : T.muted;
+    g.beginPath(); g.arc(X(x), Y(y), 3.5, 0, Math.PI*2); g.fillStyle = col; g.fill();
+    g.fillStyle = k ? col : T['text-2']; g.fillText(lm.vocab[v], X(x) + 6, Y(y));
+  });
+}
+
+$('#lmPlay').onclick = () => setLmRunning(!lm.running);
+$('#lmEpoch').onclick = () => { setLmRunning(false); while (!lmTrain(500)); dirty = true; };
+$('#lmReset').onclick = () => { setLmRunning(false); lmReset(); dirty = true; };
+$('#lmCtx').onchange = e => { setLmRunning(false); lm.n = +e.target.value; lmReset(); dirty = true; };
+$('#lmLr').oninput = e => { lm.lr = +e.target.value; $('#lmLrOut').textContent = lm.lr; };
+$('#lmTemp').oninput = e => { lm.temp = +e.target.value; $('#lmTempOut').textContent = lm.temp < 0.01 ? '0 (greedy)' : lm.temp.toFixed(2); dirty = true; };
+$('#lmTopK').onchange = e => { lm.topk = +e.target.value; dirty = true; };
+$('#lmNext').onclick = () => { setLmAuto(false); lmPick(); };
+$('#lmSentence').onclick = () => setLmAuto(!lm.auto);
+$('#lmUndo').onclick = () => { setLmAuto(false); lm.text.pop(); lm.last = null; dirty = true; };
+LM_PROMPTS.forEach(s => { const b = document.createElement('button'); b.className = 'btn'; b.textContent = s || '(empty)'; b.onclick = () => lmSetPrompt(s); $('#lmPrompts').appendChild(b); });
+function lmSync(){
+  $('#lmCtx').value = lm.n; $('#lmLr').value = lm.lr; $('#lmLrOut').textContent = lm.lr;
+  $('#lmTemp').value = lm.temp; $('#lmTempOut').textContent = lm.temp.toFixed(2); $('#lmTopK').value = lm.topk;
+}
+
 // ---------------------------------------------------------------- main loop
 let lastT = 0;
 function loop(t){
@@ -1733,6 +2446,12 @@ function loop(t){
   if (labs[tab] && running){ const lab = cur(); for (let i = 0; i < lab.cfg.speed && running; i++) trainBatch(lab); dirty = true; }
   if (tab === 'pc' && pc.running){ pc.acc += dt*pc.speed; while (pc.acc >= 1 && pc.running){ pcStep(); pc.acc -= 1; } dirty = true; }
   if (tab === 'gd' && gd.running){ gd.acc += dt*gd.speed; while (gd.acc >= 1 && gd.running){ gdStep(); gd.acc -= 1; } dirty = true; }
+  if (tab === 'evo' && evo.i === 2) dirty = true; // the sliding filter is animated
+  if (tab === 'lm' && lm.running){ const t0 = performance.now(); while (performance.now() - t0 < 12 && lm.running) lmTrain(40); dirty = true; }
+  if (tab === 'lm' && lm.auto){
+    lm.genAcc += dt;
+    if (lm.genAcc >= 0.3){ lm.genAcc = 0; const v = lmPick(); lm.autoCount++; if (lm.vocab[v] === '.' || lm.autoCount >= 25) setLmAuto(false); }
+  }
   if (dirty){ dirty = false; render(); }
   requestAnimationFrame(loop);
 }
@@ -1775,7 +2494,7 @@ $('#resetW').onclick = () => { resetNet(cur()); dirty = true; };
 $('#newData').onclick = regen;
 $('#showLines').onchange = $('#showTest').onchange = () => { dirty = true; };
 function showTab(t){
-  setRunning(false); setGdRunning(false); setPcRunning(false); tab = t; document.body.dataset.tab = t;
+  setRunning(false); setGdRunning(false); setPcRunning(false); setLmRunning(false); setLmAuto(false); tab = t; document.body.dataset.tab = t;
   document.querySelectorAll('.tabs button').forEach(x => x.classList.toggle('on', x.dataset.tab === t));
   document.querySelectorAll('[data-only]').forEach(el => { el.hidden = !el.dataset.only.split(' ').includes(t); });
   if (labs[t]) syncControls();
@@ -1783,7 +2502,7 @@ function showTab(t){
 }
 document.querySelectorAll('.tabs button').forEach(b => b.onclick = () => showTab(b.dataset.tab));
 addEventListener('keydown', e => {
-  if (e.code === 'Space' && !['INPUT', 'SELECT', 'BUTTON', 'TEXTAREA'].includes(document.activeElement.tagName)){ e.preventDefault(); if (tab === 'pc') setPcRunning(!pc.running); else if (tab === 'gd') setGdRunning(!gd.running); else if (tab === 'bp') bpNext(); else setRunning(!running); }
+  if (e.code === 'Space' && !['INPUT', 'SELECT', 'BUTTON', 'TEXTAREA'].includes(document.activeElement.tagName)){ e.preventDefault(); if (tab === 'pc') setPcRunning(!pc.running); else if (tab === 'gd') setGdRunning(!gd.running); else if (tab === 'bp') bpNext(); else if (tab === 'evo') evoGo(evo.i + 1); else if (tab === 'lm'){ setLmAuto(false); lmPick(); } else setRunning(!running); }
 });
 addEventListener('resize', () => { dirty = true; });
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { readTokens(); gd.landImg = null; dirty = true; });
@@ -1870,6 +2589,7 @@ for (const lab of Object.values(labs)){ newData(lab); resetNet(lab); }
 gdNewData(); gdSyncControls();
 bpResetHist(); bpSync();
 pcReset();
+lmBuildCorpus(); lmReset(); lmSync();
 showTab('pc');
 requestAnimationFrame(loop);
 </script>
